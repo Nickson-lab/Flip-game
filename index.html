@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <meta name="theme-color" content="#0c1830" />
+  <title>FLIP — Forest Prototype</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="gameWrap">
+    <canvas id="game" aria-label="FLIP game"></canvas>
+
+    <div id="hud">
+      <div id="title">FLIP</div>
+      <div id="stats"><span id="crystals">◆ 0/7</span><span id="time">0.0</span></div>
+    </div>
+
+    <div id="message" class="show">
+      <div class="panel">
+        <h1>FLIP</h1>
+        <p>Красивый мобильный прототип</p>
+        <p class="small">Двигайся стрелками или кнопками. Прыжок — ▲. Переворот гравитации — FLIP.</p>
+        <button id="startBtn">НАЧАТЬ</button>
+      </div>
+    </div>
+
+    <div id="touch">
+      <div class="leftCluster">
+        <button id="leftBtn" aria-label="Влево">◀</button>
+        <button id="rightBtn" aria-label="Вправо">▶</button>
+      </div>
+      <div class="rightCluster">
+        <button id="jumpBtn" aria-label="Прыжок">▲</button>
+        <button id="flipBtn" aria-label="Перевернуть гравитацию">FLIP</button>
+      </div>
+    </div>
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>
