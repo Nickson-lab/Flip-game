@@ -9,8 +9,16 @@ const heartsEl=document.getElementById('hearts');
 const enemiesEl=document.getElementById('enemies');
 const crystalsEl=document.getElementById('crystals');
 const timeEl=document.getElementById('time');
+const pauseBtn=document.getElementById('pauseBtn');
+const pauseMenu=document.getElementById('pauseMenu');
+const resumeBtn=document.getElementById('resumeBtn');
+const restartBtn=document.getElementById('restartBtn');
+const langButtons=[...document.querySelectorAll('[data-lang]')];
+const musicSliders=[...document.querySelectorAll('[data-volume=music]')];
+const sfxSliders=[...document.querySelectorAll('[data-volume=sfx]')];
 
-let W=0,H=0,screenW=0,screenH=0,viewScale=.72,dpr=1,last=0,t=0,started=false,won=false;
+let W=0,H=0,screenW=0,screenH=0,viewScale=.72,dpr=1,last=0,t=0,started=false,won=false,paused=false;
+let language=localStorage.getItem('flip-language')||'ru';
 const world={width:5200,floor:0,ceiling:76};
 const camera={x:0,shake:0,flash:0};
 const keys={left:false,right:false,flip:false,shoot:false};
@@ -19,11 +27,11 @@ const keys={left:false,right:false,flip:false,shoot:false};
 // Audio: two looping music tracks + lightweight procedural SFX.
 // Browsers require the first sound to be unlocked by a user gesture.
 const audio={
-  ctx:null,master:null,sfxBus:null,unlocked:false,muted:false,musicVolume:.42,sfxVolume:.72,current:null,fadeToken:0,
- tracks:{
-  menu:new Audio('Menu.mp3'),
-  game:new Audio('1round.Moonfern Circuit.mp3')
-},
+  ctx:null,master:null,sfxBus:null,unlocked:false,muted:false,musicVolume:Number(localStorage.getItem('flip-music-volume')||.24),sfxVolume:Number(localStorage.getItem('flip-sfx-volume')||.95),current:null,fadeToken:0,
+  tracks:{
+    menu:new Audio('Menu.mp3'),
+    game:new Audio('1round.Moonfern Circuit.mp3')
+  },
   init(){
     for(const track of Object.values(this.tracks)){track.loop=true;track.preload='auto';track.volume=0}
     this.muted=localStorage.getItem('flip-muted')==='1';
@@ -50,6 +58,8 @@ const audio={
     for(const tr of Object.values(this.tracks))tr.muted=value;
     if(!value&&this.current)this.current.play().catch(()=>{});
   },
+  setMusicVolume(v){this.musicVolume=clamp(v,0,1);localStorage.setItem('flip-music-volume',this.musicVolume);if(this.current&&!this.current.paused)this.current.volume=this.musicVolume},
+  setSfxVolume(v){this.sfxVolume=clamp(v,0,1);localStorage.setItem('flip-sfx-volume',this.sfxVolume);if(this.sfxBus)this.sfxBus.gain.value=this.sfxVolume},
   toggleMute(){this.setMuted(!this.muted);this.sfx(this.muted?'uiOff':'uiOn')},
   async playMusic(name,fade=650){
     const next=this.tracks[name];if(!next)return;
@@ -89,20 +99,41 @@ const audio={
       case'ui':this.tone(520,.055,'sine',.07,1.25);break;
       case'uiOn':this.tone(440,.07,'sine',.07,1.5);this.tone(660,.08,'sine',.06,1.25,.06);break;
       case'uiOff':this.tone(420,.12,'triangle',.07,.55);break;
-      case'flip':this.tone(280,.16,'sine',.13,2.7);this.noise(.12,.035,900);break;
-      case'shoot':this.tone(520,.09,'triangle',.10,.45);this.noise(.06,.04,1200);break;
+      case'flip':this.tone(280,.18,'sine',.20,2.7);this.noise(.14,.075,900);break;
+      case'shoot':this.tone(520,.11,'triangle',.18,.45);this.noise(.08,.085,1200);break;
       case'enemyShoot':this.tone(190,.12,'sawtooth',.055,1.7);break;
       case'hit':this.noise(.09,.09,700);this.tone(130,.08,'square',.055,.7);break;
       case'explode':this.noise(.28,.18,90);this.tone(105,.30,'sawtooth',.10,.35);break;
       case'crystal':this.tone(760,.12,'sine',.10,1.35);this.tone(1140,.15,'sine',.07,1.18,.07);break;
       case'hurt':this.noise(.18,.14,180);this.tone(180,.28,'sawtooth',.12,.42);break;
       case'portal':for(let i=0;i<5;i++)this.tone(330*Math.pow(1.26,i),.24,'sine',.07,1.12,i*.075);break;
-      case'land':this.noise(.055,.032,120);break;
+      case'land':this.noise(.075,.075,120);break;
     }
   }
 };
 audio.init();
 ['pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,()=>audio.unlock(),{once:true,passive:true}));
+const i18n={
+ ru:{lead:'Лунный лес ждёт',desc:'Переворачивай гравитацию, собирай кристаллы и отбивайся от роботов.',start:'НАЧАТЬ',pause:'ПАУЗА',resume:'ПРОДОЛЖИТЬ',restart:'НАЧАТЬ ЗАНОВО',language:'Язык',music:'Музыка',sfx:'Звуки игры'},
+ en:{lead:'The moon forest awaits',desc:'Flip gravity, collect crystals and fight off the robots.',start:'START',pause:'PAUSED',resume:'RESUME',restart:'RESTART',language:'Language',music:'Music',sfx:'Game sounds'}
+};
+function applyLanguage(){
+ const t=i18n[language];document.documentElement.lang=language;
+ document.getElementById('menuLead').textContent=t.lead;document.getElementById('menuDesc').textContent=t.desc;startBtn.textContent=t.start;
+ document.getElementById('pauseTitle').textContent=t.pause;resumeBtn.textContent=t.resume;restartBtn.textContent=t.restart;
+ document.querySelectorAll('[data-text=language]').forEach(e=>e.textContent=t.language);
+ document.querySelectorAll('[data-text=music]').forEach(e=>e.textContent=t.music);
+ document.querySelectorAll('[data-text=sfx]').forEach(e=>e.textContent=t.sfx);
+ langButtons.forEach(b=>b.classList.toggle('active',b.dataset.lang===language));
+}
+langButtons.forEach(b=>b.onclick=()=>{language=b.dataset.lang;localStorage.setItem('flip-language',language);applyLanguage();audio.sfx('ui')});
+function syncVolumes(){const mv=Math.round(audio.musicVolume*100),sv=Math.round(audio.sfxVolume*100);musicSliders.forEach(s=>s.value=mv);sfxSliders.forEach(s=>s.value=sv);document.querySelectorAll('[data-value=music]').forEach(e=>e.textContent=mv+'%');document.querySelectorAll('[data-value=sfx]').forEach(e=>e.textContent=sv+'%')}
+musicSliders.forEach(s=>s.oninput=e=>{audio.setMusicVolume(+e.target.value/100);syncVolumes()});
+sfxSliders.forEach(s=>s.oninput=e=>{audio.setSfxVolume(+e.target.value/100);syncVolumes();audio.sfx('ui')});
+function openPause(){if(!started||paused||won||player.lives<=0)return;paused=true;keys.left=keys.right=keys.flip=keys.shoot=false;pauseMenu.classList.add('show');if(audio.current)audio.current.pause();audio.sfx('ui')}
+function closePause(){if(!paused)return;paused=false;pauseMenu.classList.remove('show');if(audio.current&&!audio.muted)audio.current.play().catch(()=>{});last=performance.now();audio.sfx('ui')}
+pauseBtn.onclick=openPause;resumeBtn.onclick=closePause;restartBtn.onclick=()=>{paused=false;pauseMenu.classList.remove('show');audio.playMusic('game',350);reset();last=performance.now()};
+applyLanguage();syncVolumes();
 
 function resize(){
   dpr=Math.min(devicePixelRatio||1,2);
@@ -177,6 +208,7 @@ function bind(id,key,pulse=false){
 bind('leftBtn','left');bind('rightBtn','right');bind('flipBtn','flip',true);bind('shootBtn','shoot',true);
 
 addEventListener('keydown',e=>{
+  if(e.key==='Escape'){e.preventDefault();paused?closePause():openPause();return}
   if(['ArrowLeft','a','A'].includes(e.key))keys.left=true;
   if(['ArrowRight','d','D'].includes(e.key))keys.right=true;
   if(['ArrowUp','w','W',' ','f','F','Shift'].includes(e.key)){e.preventDefault();keys.flip=true}
@@ -189,14 +221,14 @@ addEventListener('keyup',e=>{
   if(['ArrowUp','w','W',' ','f','F','Shift'].includes(e.key))keys.flip=false;
   if(['x','X','k','K','Control'].includes(e.key))keys.shoot=false;
 });
-startBtn.onclick=()=>{audio.unlock();audio.sfx('ui');audio.playMusic('game',850);started=true;reset()};
+startBtn.onclick=()=>{audio.unlock();audio.sfx('ui');audio.playMusic('game',850);started=true;paused=false;pauseBtn.classList.add('show');reset()};
 
 let flipLock=false,shootLock=false;
 
 function hurt(){
   if(player.inv>0||won)return;
   audio.sfx('hurt');player.lives--;player.inv=1.25;camera.shake=22;camera.flash=.24;spawn(player.x+30,player.y+26,40,'#ff6e9d',300);updateHud();
-  if(player.lives<=0){
+  if(player.lives<=0){pauseBtn.classList.remove('show');
     msg.innerHTML='<div class="panel"><div class="catBadge">🐈‍⬛</div><h1>ЕЩЁ РАЗ</h1><p class="lead">Мини-кошка не сдаётся</p><button id="againBtn">СНОВА</button></div>';
     msg.classList.add('show');document.getElementById('againBtn').onclick=()=>{audio.sfx('ui');audio.playMusic('game',500);reset()};
   }else{
@@ -303,7 +335,7 @@ function update(dt){
   }
 
   if(player.x>world.width-175){
-    won=true;audio.sfx('portal');spawn(player.x,player.y,80,'#dcb8ff',340);
+    won=true;pauseBtn.classList.remove('show');audio.sfx('portal');spawn(player.x,player.y,80,'#dcb8ff',340);
     msg.innerHTML=`<div class="panel"><div class="catBadge">🐈‍⬛</div><h1>ПОРТАЛ</h1><p class="lead">Роботы: ${player.kills}/7 · Кристаллы: ${player.collected}/9</p><p class="small">Время: ${t.toFixed(1)} сек.</p><button id="againBtn">ЕЩЁ РАЗ</button></div>`;
     msg.classList.add('show');document.getElementById('againBtn').onclick=()=>{audio.sfx('ui');audio.playMusic('game',500);reset()};
   }
