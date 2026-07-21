@@ -334,9 +334,6 @@ if(mainMenuBtn)mainMenuBtn.onclick=()=>{
 };
 
 
-applyLanguage();
-syncVolumes();
-
 function resize(){
   dpr=Math.min(devicePixelRatio||1,2);
   screenW=innerWidth;
@@ -489,6 +486,8 @@ function loadLevel(index){
 }
 
 loadLevel(currentLevel);
+applyLanguage();
+syncVolumes();
 
 const player={x:120,y:0,vx:0,vy:0,w:60,h:52,gravity:1,onGround:false,face:1,lives:3,kills:0,collected:0,inv:0,shootCd:0,squash:0};
 
