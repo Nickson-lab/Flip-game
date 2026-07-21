@@ -59,8 +59,8 @@ const audio={
     for(const tr of Object.values(this.tracks))tr.muted=value;
     if(!value&&this.current)this.current.play().catch(()=>{});
   },
-  setMusicVolume(v){this.musicVolume=clamp(v,0,1);localStorage.setItem('flip-music-volume',this.musicVolume);if(this.current&&!this.current.paused)this.current.volume=this.musicVolume},
-  setSfxVolume(v){this.sfxVolume=clamp(v,0,1);localStorage.setItem('flip-sfx-volume',this.sfxVolume);if(this.sfxBus)this.sfxBus.gain.value=this.sfxVolume},
+  setMusicVolume(v){this.musicVolume=clamp(v,0,1);localStorage.setItem('flip-music-volume',this.musicVolume);for(const tr of Object.values(this.tracks)){if(tr===this.current)tr.volume=this.musicVolume;else if(tr.paused)tr.volume=0}},
+  setSfxVolume(v){this.sfxVolume=clamp(v,0,1);localStorage.setItem('flip-sfx-volume',this.sfxVolume);if(this.sfxBus){const now=this.ctx?this.ctx.currentTime:0;this.sfxBus.gain.cancelScheduledValues(now);this.sfxBus.gain.setValueAtTime(this.sfxVolume,now)}},
   toggleMute(){this.setMuted(!this.muted);this.sfx(this.muted?'uiOff':'uiOn')},
   async playMusic(name,fade=650){
     const next=this.tracks[name];if(!next)return;
@@ -115,8 +115,8 @@ const audio={
 audio.init();
 ['pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,()=>audio.unlock(),{once:true,passive:true}));
 const i18n={
- ru:{lead:'Лунный лес ждёт',desc:'Переворачивай гравитацию, собирай кристаллы и отбивайся от роботов.',start:'НАЧАТЬ',pause:'ПАУЗА',resume:'ПРОДОЛЖИТЬ',restart:'НАЧАТЬ ЗАНОВО',menu:'В ГЛАВНОЕ МЕНЮ',language:'Язык',music:'Музыка',sfx:'Звуки игры'},
- en:{lead:'The moon forest awaits',desc:'Flip gravity, collect crystals and fight off the robots.',start:'START',pause:'PAUSED',resume:'RESUME',restart:'RESTART',menu:'MAIN MENU',language:'Language',music:'Music',sfx:'Game sounds'}
+ ru:{lead:'Лунный лес ждёт',desc:'Переворачивай гравитацию, собирай кристаллы и отбивайся от роботов.',start:'НАЧАТЬ',pause:'ПАУЗА',resume:'ПРОДОЛЖИТЬ',restart:'НАЧАТЬ ЗАНОВО',menu:'В ГЛАВНОЕ МЕНЮ',language:'Язык',music:'Музыка',sfx:'Звуки игры',gameOverTitle:'ЕЩЁ РАЗ',gameOverLead:'Мини-кошка не сдаётся',again:'СНОВА',victoryTitle:'ПОРТАЛ',robots:'Роботы',crystalWord:'Кристаллы',timeWord:'Время',seconds:'сек.'},
+ en:{lead:'The moon forest awaits',desc:'Flip gravity, collect crystals and fight off the robots.',start:'START',pause:'PAUSED',resume:'RESUME',restart:'RESTART',menu:'MAIN MENU',language:'Language',music:'Music',sfx:'Game sounds',gameOverTitle:'TRY AGAIN',gameOverLead:'The little cat never gives up',again:'AGAIN',victoryTitle:'PORTAL',robots:'Robots',crystalWord:'Crystals',timeWord:'Time',seconds:'sec.'}
 };
 function applyLanguage(){
  const t=i18n[language];document.documentElement.lang=language;
@@ -129,8 +129,8 @@ function applyLanguage(){
 }
 langButtons.forEach(b=>b.onclick=()=>{language=b.dataset.lang;localStorage.setItem('flip-language',language);applyLanguage();audio.sfx('ui')});
 function syncVolumes(){const mv=Math.round(audio.musicVolume*100),sv=Math.round(audio.sfxVolume*100);musicSliders.forEach(s=>s.value=mv);sfxSliders.forEach(s=>s.value=sv);document.querySelectorAll('[data-value=music]').forEach(e=>e.textContent=mv+'%');document.querySelectorAll('[data-value=sfx]').forEach(e=>e.textContent=sv+'%')}
-musicSliders.forEach(s=>s.oninput=e=>{audio.setMusicVolume(+e.target.value/100);syncVolumes()});
-sfxSliders.forEach(s=>s.oninput=e=>{audio.setSfxVolume(+e.target.value/100);syncVolumes();audio.sfx('ui')});
+musicSliders.forEach(slider=>{const apply=e=>{audio.setMusicVolume(+e.target.value/100);syncVolumes()};slider.addEventListener('input',apply);slider.addEventListener('change',apply)});
+sfxSliders.forEach(slider=>{const apply=e=>{audio.setSfxVolume(+e.target.value/100);syncVolumes()};slider.addEventListener('input',apply);slider.addEventListener('change',e=>{apply(e);audio.sfx('ui')})});
 function openPause(){
   if(!started||paused)return;
   paused=true;
@@ -281,7 +281,7 @@ function hurt(){
   if(player.inv>0||won)return;
   audio.sfx('hurt');player.lives--;player.inv=1.25;camera.shake=22;camera.flash=.24;spawn(player.x+30,player.y+26,40,'#ff6e9d',300);updateHud();
   if(player.lives<=0){
-    msg.innerHTML='<div class="panel"><div class="catBadge">🐈‍⬛</div><h1>ЕЩЁ РАЗ</h1><p class="lead">Мини-кошка не сдаётся</p><button id="againBtn">СНОВА</button></div>';
+    const tr=i18n[language];msg.innerHTML=`<div class="panel"><div class="catBadge">🐈‍⬛</div><h1>${tr.gameOverTitle}</h1><p class="lead">${tr.gameOverLead}</p><button id="againBtn">${tr.again}</button></div>`;
     msg.classList.add('show');document.getElementById('againBtn').onclick=()=>{audio.sfx('ui');audio.playMusic('game',500);reset();last=performance.now()};
   }else{
     player.x=Math.max(120,player.x-220);player.y=player.gravity>0?world.floor-player.h:world.ceiling;player.vx=0;player.vy=0;
@@ -388,7 +388,7 @@ function update(dt){
 
   if(player.x>world.width-175){
     won=true;audio.sfx('portal');spawn(player.x,player.y,80,'#dcb8ff',340);
-    msg.innerHTML=`<div class="panel"><div class="catBadge">🐈‍⬛</div><h1>ПОРТАЛ</h1><p class="lead">Роботы: ${player.kills}/7 · Кристаллы: ${player.collected}/9</p><p class="small">Время: ${t.toFixed(1)} сек.</p><button id="againBtn">ЕЩЁ РАЗ</button></div>`;
+    const tr=i18n[language];msg.innerHTML=`<div class="panel"><div class="catBadge">🐈‍⬛</div><h1>${tr.victoryTitle}</h1><p class="lead">${tr.robots}: ${player.kills}/7 · ${tr.crystalWord}: ${player.collected}/9</p><p class="small">${tr.timeWord}: ${t.toFixed(1)} ${tr.seconds}</p><button id="againBtn">${tr.again}</button></div>`;
     msg.classList.add('show');document.getElementById('againBtn').onclick=()=>{audio.sfx('ui');audio.playMusic('game',500);reset();last=performance.now()};
   }
 
