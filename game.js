@@ -9,6 +9,11 @@ const heartsEl=document.getElementById('hearts');
 const enemiesEl=document.getElementById('enemies');
 const crystalsEl=document.getElementById('crystals');
 const timeEl=document.getElementById('time');
+const chapterEl=document.querySelector('.chapter');
+const levelEl=document.getElementById('levelLabel');
+const levelIntro=document.getElementById('levelIntro');
+const levelIntroWorld=document.getElementById('levelIntroWorld');
+const levelIntroNumber=document.getElementById('levelIntroNumber');
 const pauseBtn=document.getElementById('pauseBtn');
 const pauseMenu=document.getElementById('pauseMenu');
 const resumeBtn=document.getElementById('resumeBtn');
@@ -26,7 +31,7 @@ const savedProgress=(()=>{
   try{return JSON.parse(localStorage.getItem('flip-progress')||'{}')}
   catch{return{}}
 })();
-let currentLevel=Math.max(0,Math.min(1,Number(savedProgress.currentLevel||0)));
+let currentLevel=Math.max(0,Math.min(2,Number(savedProgress.currentLevel||0)));
 let portalTransition=false;
 
 function saveLevelResult(){
@@ -51,7 +56,7 @@ function saveLevelResult(){
     maxCrystals:Math.max(Number(old.maxCrystals||0),result.crystals)
   };
 
-  data.unlocked=Math.max(Number(data.unlocked||1),Math.min(2,currentLevel+2));
+  data.unlocked=Math.max(Number(data.unlocked||1),Math.min(LEVELS.length,currentLevel+2));
   data.currentLevel=currentLevel;
   localStorage.setItem('flip-progress',JSON.stringify(data));
   Object.assign(savedProgress,data);
@@ -275,6 +280,7 @@ function applyLanguage(){
  document.querySelectorAll('[data-text=music]').forEach(e=>e.textContent=t.music);
  document.querySelectorAll('[data-text=sfx]').forEach(e=>e.textContent=t.sfx);
  langButtons.forEach(b=>b.classList.toggle('active',b.dataset.lang===language));
+  updateLevelLabels();
 }
 langButtons.forEach(b=>b.onclick=()=>{language=b.dataset.lang;localStorage.setItem('flip-language',language);applyLanguage();audio.sfx('ui')});
 function syncVolumes(){const mv=Math.round(audio.musicVolume*100),sv=Math.round(audio.sfxVolume*100);musicSliders.forEach(s=>s.value=mv);sfxSliders.forEach(s=>s.value=sv);document.querySelectorAll('[data-value=music]').forEach(e=>e.textContent=mv+'%');document.querySelectorAll('[data-value=sfx]').forEach(e=>e.textContent=sv+'%')}
@@ -377,7 +383,7 @@ const LEVELS=[
     ruins:[1150,2410,3380,4460]
   },
   {
-    name:'CRYSTAL CAVES',
+    name:'MOON FOREST',
     width:5600,
     platforms:[
       {x:0,y:0,w:540,h:92},{x:680,y:0,w:350,h:92},{x:1160,y:0,w:430,h:92},{x:1740,y:0,w:330,h:92},
@@ -406,6 +412,40 @@ const LEVELS=[
     ],
     lamps:[300,730,1210,1700,2250,2790,3330,3880,4400,5050,5480],
     ruins:[980,2050,3150,4310]
+  },
+  {
+    name:'MOON FOREST',
+    width:6900,
+    platforms:[
+      {x:0,y:0,w:470,h:92},{x:610,y:0,w:300,h:92},{x:1070,y:0,w:360,h:92},{x:1600,y:0,w:270,h:92},
+      {x:2030,y:0,w:390,h:92},{x:2600,y:0,w:260,h:92},{x:3050,y:0,w:420,h:92},{x:3650,y:0,w:280,h:92},
+      {x:4100,y:0,w:350,h:92},{x:4620,y:0,w:250,h:92},{x:5050,y:0,w:410,h:92},{x:5650,y:0,w:290,h:92},
+      {x:6100,y:0,w:800,h:92},
+      {x:300,y:-215,w:160,h:32},{x:730,y:-330,w:170,h:32},{x:1190,y:-230,w:180,h:32},{x:1660,y:-360,w:155,h:32},
+      {x:2140,y:-250,w:190,h:32},{x:2670,y:-375,w:150,h:32},{x:3160,y:-230,w:200,h:32},{x:3710,y:-350,w:170,h:32},
+      {x:4200,y:-245,w:175,h:32},{x:4690,y:-390,w:150,h:32},{x:5160,y:-260,w:190,h:32},{x:5720,y:-360,w:165,h:32},
+      {x:6250,y:-245,w:210,h:32},{x:6600,y:-390,w:180,h:32},
+      {x:470,y:1,w:300,h:38,ceiling:true},{x:920,y:1,w:330,h:38,ceiling:true},{x:1430,y:1,w:350,h:38,ceiling:true},
+      {x:1880,y:1,w:330,h:38,ceiling:true},{x:2420,y:1,w:350,h:38,ceiling:true},{x:2860,y:1,w:370,h:38,ceiling:true},
+      {x:3470,y:1,w:360,h:38,ceiling:true},{x:3930,y:1,w:350,h:38,ceiling:true},{x:4450,y:1,w:350,h:38,ceiling:true},
+      {x:4870,y:1,w:360,h:38,ceiling:true},{x:5460,y:1,w:340,h:38,ceiling:true},{x:5940,y:1,w:350,h:38,ceiling:true}
+    ],
+    crystals:[
+      {x:380,y:-270},{x:810,y:-385},{x:1280,y:-285},{x:1735,y:-415},{x:2240,y:-305},{x:2745,y:-430},
+      {x:3260,y:-285},{x:3795,y:-405},{x:4290,y:-300},{x:4765,y:-445},{x:5260,y:-315},{x:5795,y:-415},
+      {x:6350,y:-300},{x:6690,y:-445}
+    ],
+    enemies:[
+      {x:650,dir:1,min:620,max:860,ceiling:false,type:1},{x:1080,dir:-1,min:960,max:1360,ceiling:true,type:0},
+      {x:1650,dir:1,min:1610,max:1840,ceiling:false,type:1},{x:2100,dir:-1,min:2040,max:2380,ceiling:false,type:0},
+      {x:2680,dir:1,min:2630,max:2820,ceiling:true,type:1},{x:3120,dir:-1,min:3070,max:3420,ceiling:false,type:0},
+      {x:3710,dir:1,min:3670,max:3890,ceiling:true,type:1},{x:4160,dir:-1,min:4110,max:4410,ceiling:false,type:0},
+      {x:4680,dir:1,min:4640,max:4830,ceiling:true,type:1},{x:5120,dir:-1,min:5070,max:5410,ceiling:false,type:0},
+      {x:5710,dir:1,min:5670,max:5900,ceiling:false,type:1},{x:6200,dir:-1,min:6130,max:6450,ceiling:true,type:0},
+      {x:6620,dir:-1,min:6500,max:6810,ceiling:false,type:2}
+    ],
+    lamps:[250,700,1130,1550,2010,2520,3000,3570,4050,4540,5000,5550,6050,6550],
+    ruins:[880,1780,2860,3890,4930,5890]
   }
 ];
 
@@ -415,6 +455,24 @@ let enemyBlueprint=[];
 let crystals=[],enemies=[],shots=[],enemyShots=[],particles=[],sparks=[];
 let lamps=[];
 let ruins=[];
+
+function updateLevelLabels(){
+  const level=LEVELS[currentLevel];
+  if(chapterEl)chapterEl.textContent=`🌙 ${level.name}`;
+  if(levelEl)levelEl.textContent=`LEVEL ${currentLevel+1}`;
+}
+
+let introTimer=0;
+function showLevelIntro(){
+  if(!levelIntro)return;
+  if(levelIntroWorld)levelIntroWorld.textContent=`🌙 ${LEVELS[currentLevel].name}`;
+  if(levelIntroNumber)levelIntroNumber.textContent=`${i18n[language].level} ${currentLevel+1}`;
+  levelIntro.classList.remove('show');
+  void levelIntro.offsetWidth;
+  levelIntro.classList.add('show');
+  clearTimeout(introTimer);
+  introTimer=setTimeout(()=>levelIntro.classList.remove('show'),2600);
+}
 
 function loadLevel(index){
   currentLevel=Math.max(0,Math.min(LEVELS.length-1,index));
@@ -426,6 +484,7 @@ function loadLevel(index){
   lamps=[...level.lamps];
   ruins=[...level.ruins];
   portalTransition=false;
+  updateLevelLabels();
 }
 
 loadLevel(currentLevel);
@@ -454,7 +513,7 @@ function reset(){
   player.x=120;player.y=world.floor-player.h;player.vx=0;player.vy=0;player.gravity=1;player.onGround=false;player.lives=3;player.kills=0;player.collected=0;player.inv=0;player.shootCd=0;player.squash=0;
   crystals=crystalBlueprint.map(o=>({...o,taken:false,p:Math.random()*6}));
   enemies=enemyBlueprint.map(o=>({...o,hp:o.type===2?4:2,alive:true,fire:1+Math.random()*2,hit:0,walk:Math.random()*6}));
-  shots=[];enemyShots=[];particles=[];sparks=[];camera.x=0;camera.shake=0;camera.flash=0;t=0;won=false;updateHud();msg.classList.remove('show');
+  shots=[];enemyShots=[];particles=[];sparks=[];camera.x=0;camera.shake=0;camera.flash=0;t=0;won=false;updateHud();msg.classList.remove('show');showLevelIntro();
 }
 function bind(id,key,pulse=false){
   const el=document.getElementById(id);
