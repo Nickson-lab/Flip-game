@@ -21,6 +21,31 @@ const sfxSliders=[...document.querySelectorAll('[data-volume=sfx]')];
 let W=0,H=0,screenW=0,screenH=0,viewScale=.72,dpr=1,last=0,t=0,started=false,won=false,paused=false;
 let language=localStorage.getItem('flip-language')||'ru';
 const world={width:5200,floor:0,ceiling:76};
+const chapterLabel=document.getElementById('chapterLabel');
+const savedProgress=(()=>{
+  try{return JSON.parse(localStorage.getItem('flip-progress')||'{}')}catch{return{}}
+})();
+let currentLevel=Math.max(0,Math.min(2,Number(savedProgress.unlocked||1)-1));
+let portalTransition=false;
+
+function saveProgress(result){
+  const data=(()=>{
+    try{return JSON.parse(localStorage.getItem('flip-progress')||'{}')}catch{return{}}
+  })();
+  data.unlocked=Math.max(Number(data.unlocked||1),Math.min(3,currentLevel+2));
+  data.levels=data.levels||{};
+  const key=String(currentLevel+1);
+  const old=data.levels[key]||{};
+  data.levels[key]={
+    bestTime:old.bestTime?Math.min(old.bestTime,result.time):result.time,
+    maxKills:Math.max(Number(old.maxKills||0),result.kills),
+    maxCrystals:Math.max(Number(old.maxCrystals||0),result.crystals),
+    completed:true
+  };
+  localStorage.setItem('flip-progress',JSON.stringify(data));
+  Object.assign(savedProgress,data);
+  return data.levels[key];
+}
 const camera={x:0,shake:0,flash:0};
 const keys={left:false,right:false,flip:false,shoot:false};
 
@@ -228,8 +253,8 @@ const audio={
 audio.init();
 ['pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,()=>audio.unlock(),{once:true,passive:true}));
 const i18n={
- ru:{lead:'Лунный лес ждёт',desc:'Переворачивай гравитацию, собирай кристаллы и отбивайся от роботов.',start:'НАЧАТЬ',pause:'ПАУЗА',resume:'ПРОДОЛЖИТЬ',restart:'НАЧАТЬ ЗАНОВО',menu:'В ГЛАВНОЕ МЕНЮ',language:'Язык',music:'Музыка',sfx:'Звуки игры',gameOverTitle:'ЕЩЁ РАЗ',gameOverLead:'Мини-кошка не сдаётся',again:'СНОВА',victoryTitle:'ПОРТАЛ',robots:'Роботы',crystalWord:'Кристаллы',timeWord:'Время',seconds:'сек.'},
- en:{lead:'The moon forest awaits',desc:'Flip gravity, collect crystals and fight off the robots.',start:'START',pause:'PAUSED',resume:'RESUME',restart:'RESTART',menu:'MAIN MENU',language:'Language',music:'Music',sfx:'Game sounds',gameOverTitle:'TRY AGAIN',gameOverLead:'The little cat never gives up',again:'AGAIN',victoryTitle:'PORTAL',robots:'Robots',crystalWord:'Crystals',timeWord:'Time',seconds:'sec.'}
+ ru:{lead:'Лунный лес ждёт',desc:'Переворачивай гравитацию, собирай кристаллы и отбивайся от роботов.',start:'НАЧАТЬ',pause:'ПАУЗА',resume:'ПРОДОЛЖИТЬ',restart:'НАЧАТЬ ЗАНОВО',menu:'В ГЛАВНОЕ МЕНЮ',language:'Язык',music:'Музыка',sfx:'Звуки игры',gameOverTitle:'ЕЩЁ РАЗ',gameOverLead:'Мини-кошка не сдаётся',again:'СНОВА',victoryTitle:'ПОРТАЛ',robots:'Роботы',crystalWord:'Кристаллы',timeWord:'Время',seconds:'сек.',level:'УРОВЕНЬ',completed:'ПРОЙДЕН',nextLevel:'Следующий уровень',best:'Лучшее время',allCompleted:'ЛУННЫЙ ЛЕС ПРОЙДЕН',playAgain:'СНАЧАЛА'},
+ en:{lead:'The moon forest awaits',desc:'Flip gravity, collect crystals and fight off the robots.',start:'START',pause:'PAUSED',resume:'RESUME',restart:'RESTART',menu:'MAIN MENU',language:'Language',music:'Music',sfx:'Game sounds',gameOverTitle:'TRY AGAIN',gameOverLead:'The little cat never gives up',again:'AGAIN',victoryTitle:'PORTAL',robots:'Robots',crystalWord:'Crystals',timeWord:'Time',seconds:'sec.',level:'LEVEL',completed:'COMPLETE',nextLevel:'Next level',best:'Best time',allCompleted:'MOON FOREST COMPLETE',playAgain:'PLAY AGAIN'}
 };
 function applyLanguage(){
  const t=i18n[language];document.documentElement.lang=language;
@@ -293,6 +318,7 @@ if(mainMenuBtn)mainMenuBtn.onclick=()=>{
 
 applyLanguage();
 syncVolumes();
+loadLevel(currentLevel);
 
 function resize(){
   dpr=Math.min(devicePixelRatio||1,2);
@@ -312,32 +338,97 @@ function resize(){
 
 addEventListener('resize',resize);resize();
 
-const platforms=[
-  {x:0,y:0,w:650,h:92},{x:760,y:0,w:420,h:92},{x:1280,y:0,w:520,h:92},{x:1930,y:0,w:620,h:92},
-  {x:2680,y:0,w:430,h:92},{x:3250,y:0,w:620,h:92},{x:4000,y:0,w:480,h:92},{x:4600,y:0,w:600,h:92},
-  {x:500,y:-150,w:190,h:32},{x:1050,y:-255,w:210,h:32},{x:1530,y:-170,w:170,h:32},{x:2210,y:-245,w:230,h:32},
-  {x:2870,y:-185,w:210,h:32},{x:3510,y:-265,w:220,h:32},{x:4210,y:-195,w:220,h:32},{x:4800,y:-275,w:230,h:32},
-  {x:680,y:1,w:290,h:38,ceiling:true},{x:1450,y:1,w:360,h:38,ceiling:true},{x:2280,y:1,w:330,h:38,ceiling:true},
-  {x:3100,y:1,w:350,h:38,ceiling:true},{x:3900,y:1,w:300,h:38,ceiling:true},{x:4550,y:1,w:390,h:38,ceiling:true}
+const LEVELS=[
+ {
+  name:'MOON FOREST',width:5200,
+  platforms:[
+   {x:0,y:0,w:650,h:92},{x:760,y:0,w:420,h:92},{x:1280,y:0,w:520,h:92},{x:1930,y:0,w:620,h:92},
+   {x:2680,y:0,w:430,h:92},{x:3250,y:0,w:620,h:92},{x:4000,y:0,w:480,h:92},{x:4600,y:0,w:600,h:92},
+   {x:500,y:-150,w:190,h:32},{x:1050,y:-255,w:210,h:32},{x:1530,y:-170,w:170,h:32},{x:2210,y:-245,w:230,h:32},
+   {x:2870,y:-185,w:210,h:32},{x:3510,y:-265,w:220,h:32},{x:4210,y:-195,w:220,h:32},{x:4800,y:-275,w:230,h:32},
+   {x:680,y:1,w:290,h:38,ceiling:true},{x:1450,y:1,w:360,h:38,ceiling:true},{x:2280,y:1,w:330,h:38,ceiling:true},
+   {x:3100,y:1,w:350,h:38,ceiling:true},{x:3900,y:1,w:300,h:38,ceiling:true},{x:4550,y:1,w:390,h:38,ceiling:true}
+  ],
+  crystals:[
+   {x:590,y:-205},{x:1130,y:-310},{x:1620,y:-230},{x:2330,y:-300},{x:2955,y:-245},
+   {x:3620,y:-315},{x:4310,y:-255},{x:4680,y:-330},{x:5000,y:-235}
+  ],
+  enemies:[
+   {x:970,dir:1,min:820,max:1130,ceiling:false,type:0},{x:1510,dir:1,min:1470,max:1740,ceiling:true,type:1},
+   {x:2140,dir:-1,min:1990,max:2440,ceiling:false,type:0},{x:3070,dir:1,min:2880,max:3330,ceiling:false,type:1},
+   {x:3650,dir:-1,min:3500,max:3820,ceiling:true,type:0},{x:4280,dir:1,min:4080,max:4440,ceiling:false,type:1},
+   {x:4820,dir:-1,min:4660,max:5070,ceiling:false,type:2}
+  ],
+  lamps:[360,850,1320,1870,2600,3180,3970,4520,5000],ruins:[1150,2410,3380,4460]
+ },
+ {
+  name:'CRYSTAL CAVES',width:5600,
+  platforms:[
+   {x:0,y:0,w:560,h:92},{x:690,y:0,w:340,h:92},{x:1180,y:0,w:420,h:92},{x:1740,y:0,w:290,h:92},
+   {x:2180,y:0,w:510,h:92},{x:2820,y:0,w:300,h:92},{x:3260,y:0,w:540,h:92},{x:3940,y:0,w:350,h:92},
+   {x:4430,y:0,w:410,h:92},{x:4980,y:0,w:620,h:92},
+   {x:410,y:-210,w:170,h:32},{x:820,y:-310,w:180,h:32},{x:1340,y:-190,w:210,h:32},{x:1900,y:-285,w:170,h:32},
+   {x:2380,y:-200,w:190,h:32},{x:2930,y:-315,w:170,h:32},{x:3470,y:-220,w:240,h:32},{x:4080,y:-300,w:160,h:32},
+   {x:4620,y:-205,w:190,h:32},{x:5200,y:-300,w:210,h:32},
+   {x:570,y:1,w:300,h:38,ceiling:true},{x:1080,y:1,w:350,h:38,ceiling:true},{x:1600,y:1,w:370,h:38,ceiling:true},
+   {x:2630,y:1,w:360,h:38,ceiling:true},{x:3720,y:1,w:400,h:38,ceiling:true},{x:4740,y:1,w:390,h:38,ceiling:true}
+  ],
+  crystals:[
+   {x:480,y:-265},{x:890,y:-365},{x:1430,y:-245},{x:1960,y:-340},{x:2450,y:-255},
+   {x:3000,y:-370},{x:3560,y:-275},{x:4140,y:-355},{x:4700,y:-260},{x:5310,y:-355}
+  ],
+  enemies:[
+   {x:760,dir:1,min:700,max:980,ceiling:false,type:1},{x:1260,dir:-1,min:1200,max:1540,ceiling:true,type:0},
+   {x:1850,dir:1,min:1770,max:1990,ceiling:false,type:1},{x:2300,dir:1,min:2210,max:2600,ceiling:false,type:0},
+   {x:2920,dir:-1,min:2840,max:3070,ceiling:true,type:1},{x:3390,dir:1,min:3290,max:3740,ceiling:false,type:0},
+   {x:4040,dir:-1,min:3970,max:4240,ceiling:false,type:1},{x:4590,dir:1,min:4460,max:4800,ceiling:true,type:0},
+   {x:5200,dir:-1,min:5030,max:5480,ceiling:false,type:2}
+  ],
+  lamps:[300,730,1210,1700,2250,2790,3330,3880,4400,5050,5480],ruins:[980,2050,3150,4310]
+ },
+ {
+  name:'ROBOT FACTORY',width:6000,
+  platforms:[
+   {x:0,y:0,w:500,h:92},{x:610,y:0,w:300,h:92},{x:1040,y:0,w:390,h:92},{x:1570,y:0,w:350,h:92},
+   {x:2070,y:0,w:470,h:92},{x:2690,y:0,w:330,h:92},{x:3160,y:0,w:440,h:92},{x:3740,y:0,w:300,h:92},
+   {x:4180,y:0,w:460,h:92},{x:4780,y:0,w:330,h:92},{x:5250,y:0,w:750,h:92},
+   {x:350,y:-170,w:150,h:32},{x:730,y:-280,w:170,h:32},{x:1170,y:-200,w:190,h:32},{x:1680,y:-320,w:180,h:32},
+   {x:2200,y:-210,w:210,h:32},{x:2780,y:-300,w:170,h:32},{x:3280,y:-195,w:210,h:32},{x:3830,y:-305,w:170,h:32},
+   {x:4290,y:-210,w:220,h:32},{x:4860,y:-330,w:180,h:32},{x:5450,y:-230,w:230,h:32},
+   {x:500,y:1,w:270,h:38,ceiling:true},{x:930,y:1,w:360,h:38,ceiling:true},{x:1450,y:1,w:390,h:38,ceiling:true},
+   {x:1930,y:1,w:350,h:38,ceiling:true},{x:2540,y:1,w:370,h:38,ceiling:true},{x:3570,y:1,w:360,h:38,ceiling:true},
+   {x:4620,y:1,w:380,h:38,ceiling:true},{x:5100,y:1,w:430,h:38,ceiling:true}
+  ],
+  crystals:[
+   {x:420,y:-225},{x:800,y:-335},{x:1250,y:-255},{x:1760,y:-375},{x:2300,y:-265},
+   {x:2860,y:-355},{x:3380,y:-250},{x:3910,y:-360},{x:4400,y:-265},{x:4940,y:-385},{x:5570,y:-285}
+  ],
+  enemies:[
+   {x:670,dir:1,min:620,max:880,ceiling:false,type:1},{x:1100,dir:-1,min:1050,max:1390,ceiling:false,type:0},
+   {x:1640,dir:1,min:1590,max:1890,ceiling:true,type:1},{x:2160,dir:-1,min:2090,max:2480,ceiling:false,type:0},
+   {x:2760,dir:1,min:2710,max:2970,ceiling:true,type:1},{x:3240,dir:-1,min:3180,max:3540,ceiling:false,type:0},
+   {x:3790,dir:1,min:3750,max:4010,ceiling:false,type:1},{x:4260,dir:-1,min:4200,max:4590,ceiling:true,type:0},
+   {x:4840,dir:1,min:4790,max:5070,ceiling:false,type:1},{x:5350,dir:-1,min:5270,max:5740,ceiling:false,type:2}
+  ],
+  lamps:[280,650,1040,1510,2020,2600,3120,3670,4140,4680,5200,5780],ruins:[900,1950,3050,4100,5150]
+ }
 ];
 
-const crystalBlueprint=[
-  {x:590,y:-205},{x:1130,y:-310},{x:1620,y:-230},{x:2330,y:-300},{x:2955,y:-245},
-  {x:3620,y:-315},{x:4310,y:-255},{x:4680,y:-330},{x:5000,y:-235}
-];
-const enemyBlueprint=[
-  {x:970,dir:1,min:820,max:1130,ceiling:false,type:0},
-  {x:1510,dir:1,min:1470,max:1740,ceiling:true,type:1},
-  {x:2140,dir:-1,min:1990,max:2440,ceiling:false,type:0},
-  {x:3070,dir:1,min:2880,max:3330,ceiling:false,type:1},
-  {x:3650,dir:-1,min:3500,max:3820,ceiling:true,type:0},
-  {x:4280,dir:1,min:4080,max:4440,ceiling:false,type:1},
-  {x:4820,dir:-1,min:4660,max:5070,ceiling:false,type:2}
-];
-
+let platforms=[],crystalBlueprint=[],enemyBlueprint=[],lamps=[],ruins=[];
 let crystals=[],enemies=[],shots=[],enemyShots=[],particles=[],sparks=[];
-const lamps=[360,850,1320,1870,2600,3180,3970,4520,5000];
-const ruins=[1150,2410,3380,4460];
+
+function loadLevel(index){
+  currentLevel=Math.max(0,Math.min(LEVELS.length-1,index));
+  const level=LEVELS[currentLevel];
+  world.width=level.width;
+  platforms=level.platforms.map(x=>({...x}));
+  crystalBlueprint=level.crystals.map(x=>({...x}));
+  enemyBlueprint=level.enemies.map(x=>({...x}));
+  lamps=[...level.lamps];
+  ruins=[...level.ruins];
+  portalTransition=false;
+  if(chapterLabel)chapterLabel.textContent=`${level.name} · ${currentLevel+1}/${LEVELS.length}`;
+}
 const player={x:120,y:0,vx:0,vy:0,w:60,h:52,gravity:1,onGround:false,face:1,lives:3,kills:0,collected:0,inv:0,shootCd:0,squash:0};
 
 function platformRect(p){
@@ -353,10 +444,11 @@ function spawn(x,y,n=12,color='#e8ddff',speed=240){
 }
 function updateHud(){
   heartsEl.textContent='♥'.repeat(player.lives)+'♡'.repeat(3-player.lives);
-  enemiesEl.textContent=`☠ ${player.kills}/7`;
-  crystalsEl.textContent=`◆ ${player.collected}/9`;
+  enemiesEl.textContent=`☠ ${player.kills}/${enemyBlueprint.length}`;
+  crystalsEl.textContent=`◆ ${player.collected}/${crystalBlueprint.length}`;
 }
 function reset(){
+  loadLevel(currentLevel);
   paused=false;pauseMenu.classList.remove('show');pauseBtn.classList.add('show');
   player.x=120;player.y=world.floor-player.h;player.vx=0;player.vy=0;player.gravity=1;player.onGround=false;player.lives=3;player.kills=0;player.collected=0;player.inv=0;player.shootCd=0;player.squash=0;
   crystals=crystalBlueprint.map(o=>({...o,taken:false,p:Math.random()*6}));
@@ -386,7 +478,7 @@ addEventListener('keyup',e=>{
   if(['ArrowUp','w','W',' ','f','F','Shift'].includes(e.key))keys.flip=false;
   if(['x','X','k','K','Control'].includes(e.key))keys.shoot=false;
 });
-startBtn.onclick=()=>{audio.unlock();audio.sfx('ui');audio.playMusic('game',850);started=true;paused=false;pauseBtn.classList.add('show');reset()};
+startBtn.onclick=()=>{audio.unlock();audio.sfx('ui');audio.playMusic('game',850);started=true;paused=false;pauseBtn.classList.add('show');currentLevel=Math.max(0,Math.min(LEVELS.length-1,Number(savedProgress.unlocked||1)-1));reset()};
 
 let flipLock=false,shootLock=false;
 
@@ -499,10 +591,25 @@ function update(dt){
     if(s.life<=0)enemyShots.splice(i,1);
   }
 
-  if(player.x>world.width-175){
-    won=true;audio.sfx('portal');spawn(player.x,player.y,80,'#dcb8ff',340);
-    const tr=i18n[language];msg.innerHTML=`<div class="panel"><div class="catBadge">🐈‍⬛</div><h1>${tr.victoryTitle}</h1><p class="lead">${tr.robots}: ${player.kills}/7 · ${tr.crystalWord}: ${player.collected}/9</p><p class="small">${tr.timeWord}: ${t.toFixed(1)} ${tr.seconds}</p><button id="againBtn">${tr.again}</button></div>`;
-    msg.classList.add('show');document.getElementById('againBtn').onclick=()=>{audio.sfx('ui');audio.playMusic('game',500);reset();last=performance.now()};
+  if(player.x>world.width-175&&!portalTransition){
+    portalTransition=true;won=true;audio.sfx('portal');spawn(player.x+30,player.y+26,90,'#dcb8ff',360);
+    const tr=i18n[language];
+    const result={time:Number(t.toFixed(1)),kills:player.kills,crystals:player.collected};
+    const best=saveProgress(result);
+    const isLast=currentLevel>=LEVELS.length-1;
+    msg.innerHTML=`<div class="panel"><div class="catBadge">🐈‍⬛</div><h1>${isLast?tr.allCompleted:`${tr.level} ${currentLevel+1} ${tr.completed}`}</h1><p class="lead">${tr.robots}: ${player.kills}/${enemyBlueprint.length} · ${tr.crystalWord}: ${player.collected}/${crystalBlueprint.length}</p><p class="small">${tr.timeWord}: ${t.toFixed(1)} ${tr.seconds}<br>${tr.best}: ${Number(best.bestTime).toFixed(1)} ${tr.seconds}</p>${isLast?`<button id="againBtn">${tr.playAgain}</button>`:`<p class="small">${tr.nextLevel}…</p>`}</div>`;
+    msg.classList.add('show');
+    if(isLast){
+      document.getElementById('againBtn').onclick=()=>{
+        currentLevel=0;audio.sfx('ui');audio.playMusic('game',500);reset();last=performance.now();
+      };
+    }else{
+      setTimeout(()=>{
+        currentLevel++;
+        reset();
+        last=performance.now();
+      },1450);
+    }
   }
 
   player.squash=Math.max(0,player.squash-dt);
