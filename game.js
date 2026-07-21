@@ -10,7 +10,7 @@ const heartsEl = document.getElementById('hearts');
 const enemyEl = document.getElementById('enemies');
 
 let W=0,H=0,dpr=1,last=0,started=false,won=false,t=0;
-const keys={left:false,right:false,jump:false,flip:false,shoot:false};
+const keys={left:false,right:false,flip:false,shoot:false};
 const world={width:5200,floor:0,ceiling:0};
 const camera={x:0,shake:0,flash:0};
 
@@ -52,12 +52,12 @@ let enemies=[];
 const particles=[],shots=[],enemyShots=[],motes=[];
 const lamps=[380,860,1330,1870,2600,3180,3960,4520,5000];
 const ruins=[1150,2410,3380,4460];
-const player={x:120,y:0,vx:0,vy:0,w:54,h:46,gravity:1,onGround:false,face:1,collected:0,squash:0,lives:3,kills:0,shootCd:0,inv:0,trail:[]};
+const player={x:120,y:0,vx:0,vy:0,w:54,h:46,gravity:1,onGround:false,face:1,collected:0,squash:0,lives:3,kills:0,shootCd:0,inv:0};
 
 for(let i=0;i<90;i++) motes.push({x:Math.random()*world.width,y:Math.random()*900,p:Math.random()*6,s:0.5+Math.random()*2.2});
 
 function reset(full=true){
-  player.x=120; player.y=world.floor-player.h; player.vx=0; player.vy=0; player.gravity=1; player.squash=0; player.shootCd=0; player.inv=0; player.trail=[];
+  player.x=120; player.y=world.floor-player.h; player.vx=0; player.vy=0; player.gravity=1; player.squash=0; player.shootCd=0; player.inv=0;
   if(full){
     player.collected=0; player.lives=3; player.kills=0;
     crystals=crystalBlueprint.map(o=>({...o,taken:false,p:Math.random()*6}));
@@ -110,24 +110,22 @@ function bind(id,key,pulse=false){
   el.addEventListener('pointerdown',on);
   ['pointerup','pointercancel','pointerleave'].forEach(x=>el.addEventListener(x,off));
 }
-bind('leftBtn','left');bind('rightBtn','right');bind('jumpBtn','jump',true);bind('flipBtn','flip',true);bind('shootBtn','shoot',true);
+bind('leftBtn','left');bind('rightBtn','right');bind('flipBtn','flip',true);bind('shootBtn','shoot',true);
 canvas.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'){keys.shoot=true;setTimeout(()=>keys.shoot=false,70);}});
 addEventListener('keydown',e=>{
   if(['ArrowLeft','a','A'].includes(e.key))keys.left=true;
   if(['ArrowRight','d','D'].includes(e.key))keys.right=true;
-  if(['ArrowUp','w','W',' '].includes(e.key))keys.jump=true;
   if(['f','F','Shift'].includes(e.key))keys.flip=true;
   if(['x','X','k','K','Control'].includes(e.key))keys.shoot=true;
 });
 addEventListener('keyup',e=>{
   if(['ArrowLeft','a','A'].includes(e.key))keys.left=false;
   if(['ArrowRight','d','D'].includes(e.key))keys.right=false;
-  if(['ArrowUp','w','W',' '].includes(e.key))keys.jump=false;
   if(['f','F','Shift'].includes(e.key))keys.flip=false;
   if(['x','X','k','K','Control'].includes(e.key))keys.shoot=false;
 });
 startBtn.onclick=()=>{started=true;startAudio();reset(true);};
-let jl=false,fl=false,sl=false;
+let fl=false,sl=false;
 
 function hurt(){
   if(player.inv>0||won)return;
@@ -156,8 +154,6 @@ function update(dt){
   if(keys.right){player.vx+=accel*dt;player.face=1;}
   if(!keys.left&&!keys.right){const s=Math.sign(player.vx);player.vx-=s*Math.min(Math.abs(player.vx),friction*dt);}
   player.vx=Math.max(-max,Math.min(max,player.vx));
-  if(keys.jump&&!jl&&player.onGround){player.vy=-player.gravity*520;player.onGround=false;player.squash=.2;sfx(420,.12,'triangle');}
-  jl=keys.jump;
   if(keys.flip&&!fl){player.gravity*=-1;player.vy=player.gravity*80;player.onGround=false;camera.shake=9;camera.flash=.12;spawn(player.x+27,player.y+23,22,'#c681ff',230);sfx(820,.16,'sawtooth',.09);}
   fl=keys.flip;
   if(keys.shoot&&!sl)shoot();sl=keys.shoot;
@@ -173,7 +169,6 @@ function update(dt){
     else if(player.vx<0){player.x=r.x+r.w;player.vx=0;}
   }
   if(player.y>H+270||player.y<-270)hurt();
-  player.trail.unshift({x:player.x+27,y:player.y+23,a:.18});if(player.trail.length>9)player.trail.pop();player.trail.forEach(p=>p.a*=.82);
 
   for(const q of crystals){
     if(q.taken)continue;const cy=world.floor+q.y;
@@ -289,9 +284,9 @@ function drawCat(x=player.x,y=player.y,alpha=1){
   ctx.fillStyle='#42d177';ctx.beginPath();ctx.arc(-9,-5,6.5,0,Math.PI*2);ctx.arc(9,-5,6.5,0,Math.PI*2);ctx.fill();
   ctx.fillStyle='#05070a';ctx.beginPath();ctx.arc(-9,-5,3.4,0,Math.PI*2);ctx.arc(9,-5,3.4,0,Math.PI*2);ctx.fill();
   ctx.fillStyle='#111';ctx.beginPath();ctx.ellipse(0,7,5,4,0,0,Math.PI*2);ctx.fill();
-  ctx.strokeStyle='#ff314e';ctx.lineWidth=4;ctx.beginPath();ctx.arc(0,12,16,.1,Math.PI-.1);ctx.stroke();
+  ctx.strokeStyle='#ff314e';ctx.lineWidth=5;ctx.beginPath();ctx.arc(0,8,17,.12,Math.PI-.12);ctx.stroke();
   // bell
-  ctx.fillStyle='#eeb94e';ctx.beginPath();ctx.arc(0,17,4,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#eeb94e';ctx.beginPath();ctx.arc(0,13,4.5,0,Math.PI*2);ctx.fill();ctx.fillStyle='#8b5b13';ctx.beginPath();ctx.arc(0,14.5,1.2,0,Math.PI*2);ctx.fill();
   ctx.restore();
 }
 
@@ -307,8 +302,6 @@ function drawWorld(){
   shots.forEach(drawYarn);
   for(const s of enemyShots){ctx.save();ctx.translate(s.x,s.y);ctx.fillStyle=s.type===2?'#ffae3c':'#ff3b79';ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=15;ctx.beginPath();ctx.arc(0,0,s.type===2?8:6,0,Math.PI*2);ctx.fill();ctx.restore();}
   drawPortal(world.width-115,world.floor-78,'#9d5cff',false);
-  // trail
-  for(const tr of player.trail)drawCat(tr.x-27,tr.y-23,tr.a);
   drawCat();
   for(const p of particles){ctx.globalAlpha=Math.max(0,p.life);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();}ctx.globalAlpha=1;
   ctx.restore();
