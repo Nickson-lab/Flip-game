@@ -28,8 +28,8 @@ canvas { display:block; width:100%; height:100%; touch-action:none; }
 .movePad,.actionPad { display:flex; gap:12px; align-items:flex-end; pointer-events:auto; }
 .actionPad { flex-direction:row; align-items:flex-end; gap:12px; }
 #touch button { width:76px; height:76px; border:1px solid rgba(255,255,255,.20); border-radius:26px; color:#fff; font-size:27px; font-weight:950; background:var(--glass); backdrop-filter:blur(15px); box-shadow:0 12px 36px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08); touch-action:none; }
-#shootBtn { background:rgba(199,125,27,.70)!important; font-size:31px!important; }
-#flipBtn { width:94px!important; height:76px!important; border-radius:23px!important; font-size:17px!important; letter-spacing:.08em; background:linear-gradient(135deg,rgba(120,55,231,.83),rgba(87,47,180,.78))!important; box-shadow:0 0 28px rgba(157,92,255,.25),0 12px 36px rgba(0,0,0,.3)!important; }
+#shootBtn { background:linear-gradient(145deg,rgba(203,122,26,.92),rgba(125,67,16,.88))!important; font-size:31px!important; box-shadow:0 0 28px rgba(255,155,40,.18),0 12px 36px rgba(0,0,0,.34)!important; }
+#flipBtn { width:102px!important; height:76px!important; border-radius:23px!important; font-size:17px!important; letter-spacing:.08em; background:linear-gradient(135deg,rgba(120,55,231,.83),rgba(87,47,180,.78))!important; box-shadow:0 0 28px rgba(157,92,255,.25),0 12px 36px rgba(0,0,0,.3)!important; }
 #touch button:active { transform:scale(.91); filter:brightness(1.3); }
 #rotateHint { display:none; position:absolute; inset:auto 18px 130px; z-index:7; text-align:center; padding:10px 14px; border-radius:16px; background:rgba(5,4,18,.72); font-size:12px; opacity:.82; pointer-events:none; }
 @media (orientation:portrait) and (max-width:700px) { #rotateHint { display:block; animation:fadeHint 5s forwards; } }
@@ -42,6 +42,8 @@ canvas { display:block; width:100%; height:100%; touch-action:none; }
   #stats span { min-height:31px; padding:5px 8px; }
   #touch { padding:0 10px; }
   #touch button { width:70px; height:70px; border-radius:23px; }
-  #flipBtn { width:88px!important; height:70px!important; }
+  #flipBtn { width:88px!important; height:58px!important; }
 }
 @media (hover:hover) and (pointer:fine) { #touch { opacity:.58; } }
+
+#gameWrap::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:2;background:radial-gradient(circle at 50% 45%,transparent 45%,rgba(2,1,12,.24) 100%);}
