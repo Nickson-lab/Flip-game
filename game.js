@@ -13,6 +13,7 @@ const pauseBtn=document.getElementById('pauseBtn');
 const pauseMenu=document.getElementById('pauseMenu');
 const resumeBtn=document.getElementById('resumeBtn');
 const restartBtn=document.getElementById('restartBtn');
+const mainMenuBtn=document.getElementById('mainMenuBtn');
 const langButtons=[...document.querySelectorAll('[data-lang]')];
 const musicSliders=[...document.querySelectorAll('[data-volume=music]')];
 const sfxSliders=[...document.querySelectorAll('[data-volume=sfx]')];
@@ -114,13 +115,13 @@ const audio={
 audio.init();
 ['pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,()=>audio.unlock(),{once:true,passive:true}));
 const i18n={
- ru:{lead:'Лунный лес ждёт',desc:'Переворачивай гравитацию, собирай кристаллы и отбивайся от роботов.',start:'НАЧАТЬ',pause:'ПАУЗА',resume:'ПРОДОЛЖИТЬ',restart:'НАЧАТЬ ЗАНОВО',language:'Язык',music:'Музыка',sfx:'Звуки игры'},
- en:{lead:'The moon forest awaits',desc:'Flip gravity, collect crystals and fight off the robots.',start:'START',pause:'PAUSED',resume:'RESUME',restart:'RESTART',language:'Language',music:'Music',sfx:'Game sounds'}
+ ru:{lead:'Лунный лес ждёт',desc:'Переворачивай гравитацию, собирай кристаллы и отбивайся от роботов.',start:'НАЧАТЬ',pause:'ПАУЗА',resume:'ПРОДОЛЖИТЬ',restart:'НАЧАТЬ ЗАНОВО',menu:'В ГЛАВНОЕ МЕНЮ',language:'Язык',music:'Музыка',sfx:'Звуки игры'},
+ en:{lead:'The moon forest awaits',desc:'Flip gravity, collect crystals and fight off the robots.',start:'START',pause:'PAUSED',resume:'RESUME',restart:'RESTART',menu:'MAIN MENU',language:'Language',music:'Music',sfx:'Game sounds'}
 };
 function applyLanguage(){
  const t=i18n[language];document.documentElement.lang=language;
  document.getElementById('menuLead').textContent=t.lead;document.getElementById('menuDesc').textContent=t.desc;startBtn.textContent=t.start;
- document.getElementById('pauseTitle').textContent=t.pause;resumeBtn.textContent=t.resume;restartBtn.textContent=t.restart;
+ document.getElementById('pauseTitle').textContent=t.pause;resumeBtn.textContent=t.resume;restartBtn.textContent=t.restart;mainMenuBtn.textContent=t.menu;
  document.querySelectorAll('[data-text=language]').forEach(e=>e.textContent=t.language);
  document.querySelectorAll('[data-text=music]').forEach(e=>e.textContent=t.music);
  document.querySelectorAll('[data-text=sfx]').forEach(e=>e.textContent=t.sfx);
@@ -135,9 +136,47 @@ function openPause(){
   paused=true;
   keys.left=false;keys.right=false;keys.flip=false;keys.shoot=false;
   flipLock=false;shootLock=false;
-  pauseOverlay.classList.add('show');
+  pauseMenu.classList.add('show');
   audio.sfx('ui');
 }
+
+function closePause(){
+  if(!paused)return;
+  paused=false;
+  pauseMenu.classList.remove('show');
+  last=performance.now();
+  audio.sfx('ui');
+}
+
+pauseBtn.onclick=()=>{
+  if(paused)closePause();
+  else openPause();
+};
+
+resumeBtn.onclick=closePause;
+
+restartBtn.onclick=()=>{
+  paused=false;
+  pauseMenu.classList.remove('show');
+  audio.sfx('ui');
+  audio.playMusic('game',500);
+  reset();
+  last=performance.now();
+};
+
+mainMenuBtn.onclick=()=>{
+  paused=false;
+  started=false;
+  won=false;
+  keys.left=false;keys.right=false;keys.flip=false;keys.shoot=false;
+  pauseMenu.classList.remove('show');
+  pauseBtn.classList.remove('show');
+  msg.innerHTML=`<div class="panel"><div class="catBadge">🐈‍⬛</div><h1>FLIP</h1><p id="menuLead" class="lead">${i18n[language].lead}</p><p id="menuDesc" class="small">${i18n[language].desc}</p><div class="settings"><div class="settingRow languageRow"><span data-text="language">${i18n[language].language}</span><div class="segmented"><button class="miniBtn ${language==='ru'?'active':''}" data-lang="ru">РУС</button><button class="miniBtn ${language==='en'?'active':''}" data-lang="en">ENG</button></div></div><label class="settingRow"><span data-text="music">${i18n[language].music}</span><input data-volume="music" type="range" min="0" max="100" value="${Math.round(audio.musicVolume*100)}"><output data-value="music">${Math.round(audio.musicVolume*100)}%</output></label><label class="settingRow"><span data-text="sfx">${i18n[language].sfx}</span><input data-volume="sfx" type="range" min="0" max="100" value="${Math.round(audio.sfxVolume*100)}"><output data-value="sfx">${Math.round(audio.sfxVolume*100)}%</output></label></div><button id="startBtn">${i18n[language].start}</button></div>`;
+  msg.classList.add('show');
+  audio.playMusic('menu',500);
+  location.reload();
+};
+
 addEventListener('resize',resize);resize();
 
 const platforms=[
@@ -185,6 +224,7 @@ function updateHud(){
   crystalsEl.textContent=`◆ ${player.collected}/9`;
 }
 function reset(){
+  paused=false;pauseMenu.classList.remove('show');pauseBtn.classList.add('show');
   player.x=120;player.y=world.floor-player.h;player.vx=0;player.vy=0;player.gravity=1;player.onGround=false;player.lives=3;player.kills=0;player.collected=0;player.inv=0;player.shootCd=0;player.squash=0;
   crystals=crystalBlueprint.map(o=>({...o,taken:false,p:Math.random()*6}));
   enemies=enemyBlueprint.map(o=>({...o,hp:o.type===2?4:2,alive:true,fire:1+Math.random()*2,hit:0,walk:Math.random()*6}));
@@ -222,7 +262,7 @@ function hurt(){
   audio.sfx('hurt');player.lives--;player.inv=1.25;camera.shake=22;camera.flash=.24;spawn(player.x+30,player.y+26,40,'#ff6e9d',300);updateHud();
   if(player.lives<=0){
     msg.innerHTML='<div class="panel"><div class="catBadge">🐈‍⬛</div><h1>ЕЩЁ РАЗ</h1><p class="lead">Мини-кошка не сдаётся</p><button id="againBtn">СНОВА</button></div>';
-    msg.classList.add('show');document.getElementById('againBtn').onclick=()=>{audio.sfx('ui');audio.playMusic('game',500);reset()};
+    msg.classList.add('show');document.getElementById('againBtn').onclick=()=>{audio.sfx('ui');audio.playMusic('game',500);reset();last=performance.now()};
   }else{
     player.x=Math.max(120,player.x-220);player.y=player.gravity>0?world.floor-player.h:world.ceiling;player.vx=0;player.vy=0;
   }
@@ -329,7 +369,7 @@ function update(dt){
   if(player.x>world.width-175){
     won=true;audio.sfx('portal');spawn(player.x,player.y,80,'#dcb8ff',340);
     msg.innerHTML=`<div class="panel"><div class="catBadge">🐈‍⬛</div><h1>ПОРТАЛ</h1><p class="lead">Роботы: ${player.kills}/7 · Кристаллы: ${player.collected}/9</p><p class="small">Время: ${t.toFixed(1)} сек.</p><button id="againBtn">ЕЩЁ РАЗ</button></div>`;
-    msg.classList.add('show');document.getElementById('againBtn').onclick=()=>{audio.sfx('ui');audio.playMusic('game',500);reset()};
+    msg.classList.add('show');document.getElementById('againBtn').onclick=()=>{audio.sfx('ui');audio.playMusic('game',500);reset();last=performance.now()};
   }
 
   player.squash=Math.max(0,player.squash-dt);
