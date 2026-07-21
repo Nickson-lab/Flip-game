@@ -1,7 +1,57 @@
 <!doctype html>
-<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#08172d"><meta name="apple-mobile-web-app-capable" content="yes"><title>FLIP — Cat Update</title><link rel="stylesheet" href="style.css"></head>
-<body><div id="gameWrap"><canvas id="game"></canvas>
-<div id="hud"><div id="title">FLIP</div><div id="stats"><span id="hearts">♥♥♥</span><span id="enemies">⚡ 0/5</span><span id="crystals">◆ 0/7</span><span id="time">0.0</span></div></div>
-<div id="message" class="show"><div class="panel"><h1>FLIP</h1><p>Приключение мини-кошки</p><p class="small">Беги, прыгай, переворачивай гравитацию и стреляй комками шерсти.</p><button id="startBtn">НАЧАТЬ</button></div></div>
-<div id="touch"><div class="movePad"><button id="leftBtn">◀</button><button id="rightBtn">▶</button></div><div class="actionPad"><button id="flipBtn">FLIP</button><div class="actionBottom"><button id="jumpBtn">▲</button><button id="shootBtn">●</button></div></div></div>
-<script src="game.js"></script></div></body></html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+  <meta name="theme-color" content="#09051b" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>FLIP — Cat Realm</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="gameWrap">
+    <canvas id="game" aria-label="FLIP game"></canvas>
+
+    <div id="hud">
+      <div id="brand">
+        <div id="title">FLIP</div>
+        <div id="chapter">ЛУННЫЙ ЛЕС</div>
+      </div>
+      <div id="stats">
+        <span id="hearts">♥♥♥</span>
+        <span id="enemies">☠ 0/7</span>
+        <span id="crystals">◆ 0/9</span>
+        <span id="time">0.0</span>
+      </div>
+    </div>
+
+    <div id="message" class="show">
+      <div class="panel">
+        <div class="catBadge">🐈‍⬛</div>
+        <h1>FLIP</h1>
+        <p class="lead">Приключение мини-кошки в перевёрнутом лесу</p>
+        <p class="small">Беги, прыгай, переворачивай гравитацию и стреляй комками шерсти по роботам.</p>
+        <button id="startBtn">НАЧАТЬ</button>
+      </div>
+    </div>
+
+    <div id="touch">
+      <div class="movePad">
+        <button id="leftBtn" aria-label="Влево">◀</button>
+        <button id="rightBtn" aria-label="Вправо">▶</button>
+      </div>
+      <div class="actionPad">
+        <button id="flipBtn" aria-label="Переворот гравитации">FLIP</button>
+        <div class="actionBottom">
+          <button id="jumpBtn" aria-label="Прыжок">▲</button>
+          <button id="shootBtn" aria-label="Комок шерсти">🧶</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="rotateHint">Поверни телефон горизонтально для лучшего обзора</div>
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>
