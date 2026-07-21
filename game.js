@@ -274,8 +274,9 @@ const i18n={
 };
 function applyLanguage(){
  const t=i18n[language];document.documentElement.lang=language;
- document.getElementById('menuLead').textContent=t.lead;document.getElementById('menuDesc').textContent=t.desc;startBtn.textContent=t.start;
- document.getElementById('pauseTitle').textContent=t.pause;resumeBtn.textContent=t.resume;restartBtn.textContent=t.restart;if(mainMenuBtn)mainMenuBtn.textContent=t.menu;
+ const menuLead=document.getElementById('menuLead'),menuDesc=document.getElementById('menuDesc'),pauseTitle=document.getElementById('pauseTitle');
+ if(menuLead)menuLead.textContent=t.lead;if(menuDesc)menuDesc.textContent=t.desc;if(startBtn)startBtn.textContent=t.start;
+ if(pauseTitle)pauseTitle.textContent=t.pause;if(resumeBtn)resumeBtn.textContent=t.resume;if(restartBtn)restartBtn.textContent=t.restart;if(mainMenuBtn)mainMenuBtn.textContent=t.menu;
  document.querySelectorAll('[data-text=language]').forEach(e=>e.textContent=t.language);
  document.querySelectorAll('[data-text=music]').forEach(e=>e.textContent=t.music);
  document.querySelectorAll('[data-text=sfx]').forEach(e=>e.textContent=t.sfx);
@@ -291,14 +292,14 @@ function openPause(){
   paused=true;
   keys.left=false;keys.right=false;keys.flip=false;keys.shoot=false;
   flipLock=false;shootLock=false;
-  pauseMenu.classList.add('show');
+  if(pauseMenu)pauseMenu.classList.add('show');
   audio.sfx('ui');
 }
 
 function closePause(){
   if(!paused)return;
   paused=false;
-  pauseMenu.classList.remove('show');
+  if(pauseMenu)pauseMenu.classList.remove('show');
   last=performance.now();
   audio.sfx('ui');
 }
@@ -312,7 +313,7 @@ resumeBtn.onclick=closePause;
 
 restartBtn.onclick=()=>{
   paused=false;
-  pauseMenu.classList.remove('show');
+  if(pauseMenu)pauseMenu.classList.remove('show');
   audio.sfx('ui');
   audio.playMusic('game',500);
   reset();
@@ -324,7 +325,7 @@ if(mainMenuBtn)mainMenuBtn.onclick=()=>{
   started=false;
   won=false;
   keys.left=false;keys.right=false;keys.flip=false;keys.shoot=false;
-  pauseMenu.classList.remove('show');
+  if(pauseMenu)pauseMenu.classList.remove('show');
   pauseBtn.classList.remove('show');
   msg.innerHTML=`<div class="panel"><div class="catBadge">🐈‍⬛</div><h1>FLIP</h1><p id="menuLead" class="lead">${i18n[language].lead}</p><p id="menuDesc" class="small">${i18n[language].desc}</p><div class="settings"><div class="settingRow languageRow"><span data-text="language">${i18n[language].language}</span><div class="segmented"><button class="miniBtn ${language==='ru'?'active':''}" data-lang="ru">РУС</button><button class="miniBtn ${language==='en'?'active':''}" data-lang="en">ENG</button></div></div><label class="settingRow"><span data-text="music">${i18n[language].music}</span><input data-volume="music" type="range" min="0" max="100" value="${Math.round(audio.musicVolume*100)}"><output data-value="music">${Math.round(audio.musicVolume*100)}%</output></label><label class="settingRow"><span data-text="sfx">${i18n[language].sfx}</span><input data-volume="sfx" type="range" min="0" max="100" value="${Math.round(audio.sfxVolume*100)}"><output data-value="sfx">${Math.round(audio.sfxVolume*100)}%</output></label></div><button id="startBtn">${i18n[language].start}</button></div>`;
   msg.classList.add('show');
@@ -509,7 +510,7 @@ function updateHud(){
 }
 function reset(){
   loadLevel(currentLevel);
-  paused=false;pauseMenu.classList.remove('show');pauseBtn.classList.add('show');
+  paused=false;if(pauseMenu)pauseMenu.classList.remove('show');if(pauseBtn)pauseBtn.classList.add('show');
   player.x=120;player.y=world.floor-player.h;player.vx=0;player.vy=0;player.gravity=1;player.onGround=false;player.lives=3;player.kills=0;player.collected=0;player.inv=0;player.shootCd=0;player.squash=0;
   crystals=crystalBlueprint.map(o=>({...o,taken:false,p:Math.random()*6}));
   enemies=enemyBlueprint.map(o=>({...o,hp:o.type===2?4:2,alive:true,fire:1+Math.random()*2,hit:0,walk:Math.random()*6}));
@@ -517,6 +518,7 @@ function reset(){
 }
 function bind(id,key,pulse=false){
   const el=document.getElementById(id);
+  if(!el)return;
   const on=e=>{e.preventDefault();keys[key]=true;if(pulse)setTimeout(()=>keys[key]=false,90)};
   const off=e=>{e.preventDefault();if(!pulse)keys[key]=false};
   el.addEventListener('pointerdown',on);
@@ -538,7 +540,7 @@ addEventListener('keyup',e=>{
   if(['ArrowUp','w','W',' ','f','F','Shift'].includes(e.key))keys.flip=false;
   if(['x','X','k','K','Control'].includes(e.key))keys.shoot=false;
 });
-startBtn.onclick=()=>{audio.unlock();audio.sfx('ui');audio.playMusic('game',850);started=true;paused=false;pauseBtn.classList.add('show');reset()};
+if(startBtn)startBtn.onclick=()=>{audio.unlock();audio.sfx('ui');audio.playMusic('game',850);started=true;paused=false;if(pauseBtn)pauseBtn.classList.add('show');reset()};
 
 let flipLock=false,shootLock=false;
 
