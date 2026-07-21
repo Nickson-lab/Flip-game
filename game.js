@@ -121,7 +121,7 @@ const i18n={
 function applyLanguage(){
  const t=i18n[language];document.documentElement.lang=language;
  document.getElementById('menuLead').textContent=t.lead;document.getElementById('menuDesc').textContent=t.desc;startBtn.textContent=t.start;
- document.getElementById('pauseTitle').textContent=t.pause;resumeBtn.textContent=t.resume;restartBtn.textContent=t.restart;mainMenuBtn.textContent=t.menu;
+ document.getElementById('pauseTitle').textContent=t.pause;resumeBtn.textContent=t.resume;restartBtn.textContent=t.restart;if(mainMenuBtn)mainMenuBtn.textContent=t.menu;
  document.querySelectorAll('[data-text=language]').forEach(e=>e.textContent=t.language);
  document.querySelectorAll('[data-text=music]').forEach(e=>e.textContent=t.music);
  document.querySelectorAll('[data-text=sfx]').forEach(e=>e.textContent=t.sfx);
@@ -164,7 +164,7 @@ restartBtn.onclick=()=>{
   last=performance.now();
 };
 
-mainMenuBtn.onclick=()=>{
+if(mainMenuBtn)mainMenuBtn.onclick=()=>{
   paused=false;
   started=false;
   won=false;
@@ -176,6 +176,26 @@ mainMenuBtn.onclick=()=>{
   audio.playMusic('menu',500);
   location.reload();
 };
+
+
+applyLanguage();
+syncVolumes();
+
+function resize(){
+  dpr=Math.min(devicePixelRatio||1,2);
+  screenW=innerWidth;
+  screenH=innerHeight;
+  const mobile=matchMedia('(pointer:coarse)').matches||screenW<900;
+  viewScale=mobile?.70:.82;
+  W=screenW/viewScale;
+  H=screenH/viewScale;
+  canvas.width=Math.floor(screenW*dpr);
+  canvas.height=Math.floor(screenH*dpr);
+  canvas.style.width=screenW+'px';
+  canvas.style.height=screenH+'px';
+  ctx.setTransform(dpr*viewScale,0,0,dpr*viewScale,0,0);
+  world.floor=H-138;
+}
 
 addEventListener('resize',resize);resize();
 
