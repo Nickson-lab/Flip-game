@@ -130,21 +130,13 @@ langButtons.forEach(b=>b.onclick=()=>{language=b.dataset.lang;localStorage.setIt
 function syncVolumes(){const mv=Math.round(audio.musicVolume*100),sv=Math.round(audio.sfxVolume*100);musicSliders.forEach(s=>s.value=mv);sfxSliders.forEach(s=>s.value=sv);document.querySelectorAll('[data-value=music]').forEach(e=>e.textContent=mv+'%');document.querySelectorAll('[data-value=sfx]').forEach(e=>e.textContent=sv+'%')}
 musicSliders.forEach(s=>s.oninput=e=>{audio.setMusicVolume(+e.target.value/100);syncVolumes()});
 sfxSliders.forEach(s=>s.oninput=e=>{audio.setSfxVolume(+e.target.value/100);syncVolumes();audio.sfx('ui')});
-function openPause(){if(!started||paused||won||player.lives<=0)return;paused=true;keys.left=keys.right=keys.flip=keys.shoot=false;pauseMenu.classList.add('show');if(audio.current)audio.current.pause();audio.sfx('ui')}
-function closePause(){if(!paused)return;paused=false;pauseMenu.classList.remove('show');if(audio.current&&!audio.muted)audio.current.play().catch(()=>{});last=performance.now();audio.sfx('ui')}
-pauseBtn.onclick=openPause;resumeBtn.onclick=closePause;restartBtn.onclick=()=>{paused=false;pauseMenu.classList.remove('show');audio.playMusic('game',350);reset();last=performance.now()};
-applyLanguage();syncVolumes();
-
-function resize(){
-  dpr=Math.min(devicePixelRatio||1,2);
-  screenW=innerWidth;screenH=innerHeight;
-  const mobile=matchMedia('(pointer:coarse)').matches||screenW<900;
-  viewScale=mobile?.70:.82;
-  W=screenW/viewScale;H=screenH/viewScale;
-  canvas.width=Math.floor(screenW*dpr);canvas.height=Math.floor(screenH*dpr);
-  canvas.style.width=screenW+'px';canvas.style.height=screenH+'px';
-  ctx.setTransform(dpr*viewScale,0,0,dpr*viewScale,0,0);
-  world.floor=H-138;
+function openPause(){
+  if(!started||paused)return;
+  paused=true;
+  keys.left=false;keys.right=false;keys.flip=false;keys.shoot=false;
+  flipLock=false;shootLock=false;
+  pauseOverlay.classList.add('show');
+  audio.sfx('ui');
 }
 addEventListener('resize',resize);resize();
 
@@ -228,7 +220,7 @@ let flipLock=false,shootLock=false;
 function hurt(){
   if(player.inv>0||won)return;
   audio.sfx('hurt');player.lives--;player.inv=1.25;camera.shake=22;camera.flash=.24;spawn(player.x+30,player.y+26,40,'#ff6e9d',300);updateHud();
-  if(player.lives<=0){pauseBtn.classList.remove('show');
+  if(player.lives<=0){
     msg.innerHTML='<div class="panel"><div class="catBadge">🐈‍⬛</div><h1>ЕЩЁ РАЗ</h1><p class="lead">Мини-кошка не сдаётся</p><button id="againBtn">СНОВА</button></div>';
     msg.classList.add('show');document.getElementById('againBtn').onclick=()=>{audio.sfx('ui');audio.playMusic('game',500);reset()};
   }else{
@@ -245,7 +237,7 @@ function shoot(){
 }
 
 function update(dt){
-  if(!started||won||player.lives<=0)return;
+  if(!started||paused||won||player.lives<=0)return;
   t+=dt;timeEl.textContent=t.toFixed(1);
   player.inv=Math.max(0,player.inv-dt);player.shootCd=Math.max(0,player.shootCd-dt);camera.flash=Math.max(0,camera.flash-dt);
 
@@ -335,7 +327,7 @@ function update(dt){
   }
 
   if(player.x>world.width-175){
-    won=true;pauseBtn.classList.remove('show');audio.sfx('portal');spawn(player.x,player.y,80,'#dcb8ff',340);
+    won=true;audio.sfx('portal');spawn(player.x,player.y,80,'#dcb8ff',340);
     msg.innerHTML=`<div class="panel"><div class="catBadge">🐈‍⬛</div><h1>ПОРТАЛ</h1><p class="lead">Роботы: ${player.kills}/7 · Кристаллы: ${player.collected}/9</p><p class="small">Время: ${t.toFixed(1)} сек.</p><button id="againBtn">ЕЩЁ РАЗ</button></div>`;
     msg.classList.add('show');document.getElementById('againBtn').onclick=()=>{audio.sfx('ui');audio.playMusic('game',500);reset()};
   }
