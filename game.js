@@ -28,54 +28,167 @@ const keys={left:false,right:false,flip:false,shoot:false};
 // Audio: two looping music tracks + lightweight procedural SFX.
 // Browsers require the first sound to be unlocked by a user gesture.
 const audio={
-  ctx:null,master:null,sfxBus:null,unlocked:false,muted:false,musicVolume:Number(localStorage.getItem('flip-music-volume')||.24),sfxVolume:Number(localStorage.getItem('flip-sfx-volume')||.95),current:null,fadeToken:0,
+  ctx:null,
+  master:null,
+  musicBus:null,
+  sfxBus:null,
+  musicSources:{},
+  musicGains:{},
+  unlocked:false,
+  muted:false,
+  musicVolume:Number(localStorage.getItem('flip-music-volume')||.24),
+  sfxVolume:Number(localStorage.getItem('flip-sfx-volume')||.95),
+  current:null,
+  fadeToken:0,
   tracks:{
     menu:new Audio('Menu.mp3'),
     game:new Audio('1round.Moonfern Circuit.mp3')
   },
   init(){
-    for(const track of Object.values(this.tracks)){track.loop=true;track.preload='auto';track.volume=0}
+    this.musicVolume=clamp(Number.isFinite(this.musicVolume)?this.musicVolume:.24,0,1);
+    this.sfxVolume=clamp(Number.isFinite(this.sfxVolume)?this.sfxVolume:.95,0,1);
+    for(const track of Object.values(this.tracks)){
+      track.loop=true;
+      track.preload='auto';
+      track.volume=1;
+    }
     this.muted=localStorage.getItem('flip-muted')==='1';
     addEventListener('visibilitychange',()=>{
-      if(document.hidden){for(const tr of Object.values(this.tracks))tr.pause()}
-      else if(this.unlocked&&this.current&&!this.muted)this.current.play().catch(()=>{});
+      if(document.hidden){
+        for(const tr of Object.values(this.tracks))tr.pause();
+      }else if(this.unlocked&&this.current&&!this.muted){
+        this.current.play().catch(()=>{});
+      }
     });
   },
   unlock(){
-    if(this.unlocked)return;
+    if(this.unlocked){
+      if(this.ctx&&this.ctx.state==='suspended')this.ctx.resume().catch(()=>{});
+      return;
+    }
     this.unlocked=true;
     const AC=window.AudioContext||window.webkitAudioContext;
     if(AC){
-      this.ctx=new AC();this.master=this.ctx.createGain();this.sfxBus=this.ctx.createGain();
-      this.master.gain.value=this.muted?0:1;this.sfxBus.gain.value=this.sfxVolume;
-      this.sfxBus.connect(this.master);this.master.connect(this.ctx.destination);
+      this.ctx=new AC();
+      this.master=this.ctx.createGain();
+      this.musicBus=this.ctx.createGain();
+      this.sfxBus=this.ctx.createGain();
+
+      this.master.gain.value=this.muted?0:1;
+      this.musicBus.gain.value=this.musicVolume;
+      this.sfxBus.gain.value=this.sfxVolume;
+
+      this.musicBus.connect(this.master);
+      this.sfxBus.connect(this.master);
+      this.master.connect(this.ctx.destination);
+
+      for(const [name,track] of Object.entries(this.tracks)){
+        try{
+          const source=this.ctx.createMediaElementSource(track);
+          const gain=this.ctx.createGain();
+          gain.gain.value=0;
+          source.connect(gain);
+          gain.connect(this.musicBus);
+          this.musicSources[name]=source;
+          this.musicGains[name]=gain;
+        }catch(err){
+          console.warn('Music Web Audio setup failed:',err);
+        }
+      }
       this.ctx.resume().catch(()=>{});
     }
     if(!started)this.playMusic('menu',700);
   },
   setMuted(value){
-    this.muted=value;localStorage.setItem('flip-muted',value?'1':'0');
-    if(this.master)this.master.gain.setTargetAtTime(value?0:1,this.ctx.currentTime,.025);
-    for(const tr of Object.values(this.tracks))tr.muted=value;
-    if(!value&&this.current)this.current.play().catch(()=>{});
+    this.muted=Boolean(value);
+    localStorage.setItem('flip-muted',this.muted?'1':'0');
+    if(this.master&&this.ctx){
+      const now=this.ctx.currentTime;
+      this.master.gain.cancelScheduledValues(now);
+      this.master.gain.setTargetAtTime(this.muted?0:1,now,.025);
+    }else{
+      for(const tr of Object.values(this.tracks))tr.muted=this.muted;
+    }
+    if(!this.muted&&this.current)this.current.play().catch(()=>{});
   },
-  setMusicVolume(v){this.musicVolume=clamp(v,0,1);localStorage.setItem('flip-music-volume',this.musicVolume);for(const tr of Object.values(this.tracks)){if(tr===this.current)tr.volume=this.musicVolume;else if(tr.paused)tr.volume=0}},
-  setSfxVolume(v){this.sfxVolume=clamp(v,0,1);localStorage.setItem('flip-sfx-volume',this.sfxVolume);if(this.sfxBus){const now=this.ctx?this.ctx.currentTime:0;this.sfxBus.gain.cancelScheduledValues(now);this.sfxBus.gain.setValueAtTime(this.sfxVolume,now)}},
-  toggleMute(){this.setMuted(!this.muted);this.sfx(this.muted?'uiOff':'uiOn')},
+  setMusicVolume(v){
+    this.musicVolume=clamp(Number(v)||0,0,1);
+    localStorage.setItem('flip-music-volume',String(this.musicVolume));
+    if(this.musicBus&&this.ctx){
+      const now=this.ctx.currentTime;
+      this.musicBus.gain.cancelScheduledValues(now);
+      this.musicBus.gain.setTargetAtTime(this.musicVolume,now,.015);
+    }else{
+      for(const tr of Object.values(this.tracks)){
+        tr.volume=tr===this.current?this.musicVolume:0;
+      }
+    }
+  },
+  setSfxVolume(v){
+    this.sfxVolume=clamp(Number(v)||0,0,1);
+    localStorage.setItem('flip-sfx-volume',String(this.sfxVolume));
+    if(this.sfxBus&&this.ctx){
+      const now=this.ctx.currentTime;
+      this.sfxBus.gain.cancelScheduledValues(now);
+      this.sfxBus.gain.setTargetAtTime(this.sfxVolume,now,.015);
+    }
+  },
+  toggleMute(){
+    this.setMuted(!this.muted);
+    if(!this.muted)this.sfx('uiOn');
+  },
   async playMusic(name,fade=650){
-    const next=this.tracks[name];if(!next)return;
-    this.current=next;if(!this.unlocked||this.muted)return;
+    const next=this.tracks[name];
+    if(!next)return;
+    this.current=next;
+    if(!this.unlocked||this.muted)return;
+    if(this.ctx&&this.ctx.state==='suspended')await this.ctx.resume().catch(()=>{});
+
     const token=++this.fadeToken;
-    const old=Object.values(this.tracks).find(t=>t!==next&&!t.paused);
-    next.muted=false;next.volume=0;
+    const oldEntry=Object.entries(this.tracks).find(([key,tr])=>key!==name&&!tr.paused);
+    const oldName=oldEntry?oldEntry[0]:null;
+    const old=oldEntry?oldEntry[1]:null;
+
+    next.muted=false;
+    next.volume=1;
     try{await next.play()}catch{return}
-    const startedAt=performance.now(),startOld=old?old.volume:0;
+
+    if(this.musicBus&&this.ctx&&this.musicGains[name]){
+      const now=this.ctx.currentTime;
+      const seconds=Math.max(.01,fade/1000);
+      const nextGain=this.musicGains[name].gain;
+      nextGain.cancelScheduledValues(now);
+      nextGain.setValueAtTime(nextGain.value,now);
+      nextGain.linearRampToValueAtTime(1,now+seconds);
+
+      if(oldName&&this.musicGains[oldName]){
+        const oldGain=this.musicGains[oldName].gain;
+        oldGain.cancelScheduledValues(now);
+        oldGain.setValueAtTime(oldGain.value,now);
+        oldGain.linearRampToValueAtTime(0,now+seconds);
+      }
+
+      setTimeout(()=>{
+        if(token!==this.fadeToken)return;
+        if(old){
+          old.pause();
+          old.currentTime=0;
+        }
+      },fade+40);
+      return;
+    }
+
+    // Fallback for browsers without Web Audio media routing.
+    next.volume=0;
+    const startedAt=performance.now();
+    const startOld=old?old.volume:0;
     const step=now=>{
       if(token!==this.fadeToken)return;
       const k=Math.min(1,(now-startedAt)/Math.max(1,fade));
       next.volume=this.musicVolume*k;
       if(old)old.volume=startOld*(1-k);
-      if(k<1)requestAnimationFrame(step);else if(old){old.pause();old.currentTime=0}
+      if(k<1)requestAnimationFrame(step);
+      else if(old){old.pause();old.currentTime=0}
     };
     requestAnimationFrame(step);
   },
