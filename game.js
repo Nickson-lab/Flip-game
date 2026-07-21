@@ -20,10 +20,10 @@ const keys={left:false,right:false,flip:false,shoot:false};
 // Browsers require the first sound to be unlocked by a user gesture.
 const audio={
   ctx:null,master:null,sfxBus:null,unlocked:false,muted:false,musicVolume:.42,sfxVolume:.72,current:null,fadeToken:0,
-  tracks:{
-    menu:new Audio('audio/Menu.mp3'),
-    game:new Audio('audio/1round.Moonfern Circuit.mp3')
-  },
+ tracks:{
+  menu:new Audio('Menu.mp3'),
+  game:new Audio('1round.Moonfern Circuit.mp3')
+},
   init(){
     for(const track of Object.values(this.tracks)){track.loop=true;track.preload='auto';track.volume=0}
     this.muted=localStorage.getItem('flip-muted')==='1';
