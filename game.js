@@ -21,6 +21,42 @@ const sfxSliders=[...document.querySelectorAll('[data-volume=sfx]')];
 let W=0,H=0,screenW=0,screenH=0,viewScale=.72,dpr=1,last=0,t=0,started=false,won=false,paused=false;
 let language=localStorage.getItem('flip-language')||'ru';
 const world={width:5200,floor:0,ceiling:76};
+
+const savedProgress=(()=>{
+  try{return JSON.parse(localStorage.getItem('flip-progress')||'{}')}
+  catch{return{}}
+})();
+let currentLevel=Math.max(0,Math.min(1,Number(savedProgress.currentLevel||0)));
+let portalTransition=false;
+
+function saveLevelResult(){
+  const data=(()=>{
+    try{return JSON.parse(localStorage.getItem('flip-progress')||'{}')}
+    catch{return{}}
+  })();
+
+  data.levels=data.levels||{};
+  const key=String(currentLevel+1);
+  const old=data.levels[key]||{};
+  const result={
+    time:Number(t.toFixed(1)),
+    kills:player.kills,
+    crystals:player.collected
+  };
+
+  data.levels[key]={
+    completed:true,
+    bestTime:old.bestTime?Math.min(Number(old.bestTime),result.time):result.time,
+    maxKills:Math.max(Number(old.maxKills||0),result.kills),
+    maxCrystals:Math.max(Number(old.maxCrystals||0),result.crystals)
+  };
+
+  data.unlocked=Math.max(Number(data.unlocked||1),Math.min(2,currentLevel+2));
+  data.currentLevel=currentLevel;
+  localStorage.setItem('flip-progress',JSON.stringify(data));
+  Object.assign(savedProgress,data);
+  return data.levels[key];
+}
 const camera={x:0,shake:0,flash:0};
 const keys={left:false,right:false,flip:false,shoot:false};
 
@@ -228,8 +264,8 @@ const audio={
 audio.init();
 ['pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,()=>audio.unlock(),{once:true,passive:true}));
 const i18n={
- ru:{lead:'Лунный лес ждёт',desc:'Переворачивай гравитацию, собирай кристаллы и отбивайся от роботов.',start:'НАЧАТЬ',pause:'ПАУЗА',resume:'ПРОДОЛЖИТЬ',restart:'НАЧАТЬ ЗАНОВО',menu:'В ГЛАВНОЕ МЕНЮ',language:'Язык',music:'Музыка',sfx:'Звуки игры',gameOverTitle:'ЕЩЁ РАЗ',gameOverLead:'Мини-кошка не сдаётся',again:'СНОВА',victoryTitle:'ПОРТАЛ',robots:'Роботы',crystalWord:'Кристаллы',timeWord:'Время',seconds:'сек.'},
- en:{lead:'The moon forest awaits',desc:'Flip gravity, collect crystals and fight off the robots.',start:'START',pause:'PAUSED',resume:'RESUME',restart:'RESTART',menu:'MAIN MENU',language:'Language',music:'Music',sfx:'Game sounds',gameOverTitle:'TRY AGAIN',gameOverLead:'The little cat never gives up',again:'AGAIN',victoryTitle:'PORTAL',robots:'Robots',crystalWord:'Crystals',timeWord:'Time',seconds:'sec.'}
+ ru:{lead:'Лунный лес ждёт',desc:'Переворачивай гравитацию, собирай кристаллы и отбивайся от роботов.',start:'НАЧАТЬ',pause:'ПАУЗА',resume:'ПРОДОЛЖИТЬ',restart:'НАЧАТЬ ЗАНОВО',menu:'В ГЛАВНОЕ МЕНЮ',language:'Язык',music:'Музыка',sfx:'Звуки игры',gameOverTitle:'ЕЩЁ РАЗ',gameOverLead:'Мини-кошка не сдаётся',again:'СНОВА',victoryTitle:'ПОРТАЛ',robots:'Роботы',crystalWord:'Кристаллы',timeWord:'Время',seconds:'сек.',level:'УРОВЕНЬ',complete:'ПРОЙДЕН',next:'Переход на следующий уровень…',best:'Лучшее время',finish:'ИГРА ПРОЙДЕНА',againAll:'ИГРАТЬ СНАЧАЛА'},
+ en:{lead:'The moon forest awaits',desc:'Flip gravity, collect crystals and fight off the robots.',start:'START',pause:'PAUSED',resume:'RESUME',restart:'RESTART',menu:'MAIN MENU',language:'Language',music:'Music',sfx:'Game sounds',gameOverTitle:'TRY AGAIN',gameOverLead:'The little cat never gives up',again:'AGAIN',victoryTitle:'PORTAL',robots:'Robots',crystalWord:'Crystals',timeWord:'Time',seconds:'sec.',level:'LEVEL',complete:'COMPLETE',next:'Moving to the next level…',best:'Best time',finish:'GAME COMPLETE',againAll:'PLAY AGAIN'}
 };
 function applyLanguage(){
  const t=i18n[language];document.documentElement.lang=language;
@@ -312,32 +348,88 @@ function resize(){
 
 addEventListener('resize',resize);resize();
 
-const platforms=[
-  {x:0,y:0,w:650,h:92},{x:760,y:0,w:420,h:92},{x:1280,y:0,w:520,h:92},{x:1930,y:0,w:620,h:92},
-  {x:2680,y:0,w:430,h:92},{x:3250,y:0,w:620,h:92},{x:4000,y:0,w:480,h:92},{x:4600,y:0,w:600,h:92},
-  {x:500,y:-150,w:190,h:32},{x:1050,y:-255,w:210,h:32},{x:1530,y:-170,w:170,h:32},{x:2210,y:-245,w:230,h:32},
-  {x:2870,y:-185,w:210,h:32},{x:3510,y:-265,w:220,h:32},{x:4210,y:-195,w:220,h:32},{x:4800,y:-275,w:230,h:32},
-  {x:680,y:1,w:290,h:38,ceiling:true},{x:1450,y:1,w:360,h:38,ceiling:true},{x:2280,y:1,w:330,h:38,ceiling:true},
-  {x:3100,y:1,w:350,h:38,ceiling:true},{x:3900,y:1,w:300,h:38,ceiling:true},{x:4550,y:1,w:390,h:38,ceiling:true}
+const LEVELS=[
+  {
+    name:'MOON FOREST',
+    width:5200,
+    platforms:[
+      {x:0,y:0,w:650,h:92},{x:760,y:0,w:420,h:92},{x:1280,y:0,w:520,h:92},{x:1930,y:0,w:620,h:92},
+      {x:2680,y:0,w:430,h:92},{x:3250,y:0,w:620,h:92},{x:4000,y:0,w:480,h:92},{x:4600,y:0,w:600,h:92},
+      {x:500,y:-150,w:190,h:32},{x:1050,y:-255,w:210,h:32},{x:1530,y:-170,w:170,h:32},{x:2210,y:-245,w:230,h:32},
+      {x:2870,y:-185,w:210,h:32},{x:3510,y:-265,w:220,h:32},{x:4210,y:-195,w:220,h:32},{x:4800,y:-275,w:230,h:32},
+      {x:680,y:1,w:290,h:38,ceiling:true},{x:1450,y:1,w:360,h:38,ceiling:true},{x:2280,y:1,w:330,h:38,ceiling:true},
+      {x:3100,y:1,w:350,h:38,ceiling:true},{x:3900,y:1,w:300,h:38,ceiling:true},{x:4550,y:1,w:390,h:38,ceiling:true}
+    ],
+    crystals:[
+      {x:590,y:-205},{x:1130,y:-310},{x:1620,y:-230},{x:2330,y:-300},{x:2955,y:-245},
+      {x:3620,y:-315},{x:4310,y:-255},{x:4680,y:-330},{x:5000,y:-235}
+    ],
+    enemies:[
+      {x:970,dir:1,min:820,max:1130,ceiling:false,type:0},
+      {x:1510,dir:1,min:1470,max:1740,ceiling:true,type:1},
+      {x:2140,dir:-1,min:1990,max:2440,ceiling:false,type:0},
+      {x:3070,dir:1,min:2880,max:3330,ceiling:false,type:1},
+      {x:3650,dir:-1,min:3500,max:3820,ceiling:true,type:0},
+      {x:4280,dir:1,min:4080,max:4440,ceiling:false,type:1},
+      {x:4820,dir:-1,min:4660,max:5070,ceiling:false,type:2}
+    ],
+    lamps:[360,850,1320,1870,2600,3180,3970,4520,5000],
+    ruins:[1150,2410,3380,4460]
+  },
+  {
+    name:'CRYSTAL CAVES',
+    width:5600,
+    platforms:[
+      {x:0,y:0,w:540,h:92},{x:680,y:0,w:350,h:92},{x:1160,y:0,w:430,h:92},{x:1740,y:0,w:330,h:92},
+      {x:2200,y:0,w:500,h:92},{x:2830,y:0,w:330,h:92},{x:3300,y:0,w:470,h:92},{x:3910,y:0,w:360,h:92},
+      {x:4410,y:0,w:420,h:92},{x:4970,y:0,w:630,h:92},
+      {x:390,y:-210,w:170,h:32},{x:820,y:-305,w:190,h:32},{x:1330,y:-185,w:210,h:32},{x:1880,y:-285,w:180,h:32},
+      {x:2380,y:-205,w:200,h:32},{x:2930,y:-315,w:170,h:32},{x:3450,y:-220,w:230,h:32},{x:4060,y:-300,w:170,h:32},
+      {x:4580,y:-210,w:200,h:32},{x:5200,y:-310,w:220,h:32},
+      {x:550,y:1,w:300,h:38,ceiling:true},{x:1050,y:1,w:360,h:38,ceiling:true},{x:1580,y:1,w:390,h:38,ceiling:true},
+      {x:2660,y:1,w:360,h:38,ceiling:true},{x:3720,y:1,w:400,h:38,ceiling:true},{x:4770,y:1,w:390,h:38,ceiling:true}
+    ],
+    crystals:[
+      {x:470,y:-265},{x:900,y:-360},{x:1420,y:-240},{x:1960,y:-340},{x:2470,y:-260},
+      {x:3010,y:-370},{x:3550,y:-275},{x:4140,y:-355},{x:4680,y:-265},{x:5320,y:-365}
+    ],
+    enemies:[
+      {x:760,dir:1,min:700,max:980,ceiling:false,type:1},
+      {x:1240,dir:-1,min:1180,max:1540,ceiling:true,type:0},
+      {x:1830,dir:1,min:1770,max:2020,ceiling:false,type:1},
+      {x:2300,dir:1,min:2220,max:2610,ceiling:false,type:0},
+      {x:2920,dir:-1,min:2850,max:3090,ceiling:true,type:1},
+      {x:3390,dir:1,min:3320,max:3710,ceiling:false,type:0},
+      {x:4010,dir:-1,min:3940,max:4240,ceiling:false,type:1},
+      {x:4550,dir:1,min:4450,max:4780,ceiling:true,type:0},
+      {x:5200,dir:-1,min:5050,max:5480,ceiling:false,type:2}
+    ],
+    lamps:[300,730,1210,1700,2250,2790,3330,3880,4400,5050,5480],
+    ruins:[980,2050,3150,4310]
+  }
 ];
 
-const crystalBlueprint=[
-  {x:590,y:-205},{x:1130,y:-310},{x:1620,y:-230},{x:2330,y:-300},{x:2955,y:-245},
-  {x:3620,y:-315},{x:4310,y:-255},{x:4680,y:-330},{x:5000,y:-235}
-];
-const enemyBlueprint=[
-  {x:970,dir:1,min:820,max:1130,ceiling:false,type:0},
-  {x:1510,dir:1,min:1470,max:1740,ceiling:true,type:1},
-  {x:2140,dir:-1,min:1990,max:2440,ceiling:false,type:0},
-  {x:3070,dir:1,min:2880,max:3330,ceiling:false,type:1},
-  {x:3650,dir:-1,min:3500,max:3820,ceiling:true,type:0},
-  {x:4280,dir:1,min:4080,max:4440,ceiling:false,type:1},
-  {x:4820,dir:-1,min:4660,max:5070,ceiling:false,type:2}
-];
-
+let platforms=[];
+let crystalBlueprint=[];
+let enemyBlueprint=[];
 let crystals=[],enemies=[],shots=[],enemyShots=[],particles=[],sparks=[];
-const lamps=[360,850,1320,1870,2600,3180,3970,4520,5000];
-const ruins=[1150,2410,3380,4460];
+let lamps=[];
+let ruins=[];
+
+function loadLevel(index){
+  currentLevel=Math.max(0,Math.min(LEVELS.length-1,index));
+  const level=LEVELS[currentLevel];
+  world.width=level.width;
+  platforms=level.platforms.map(item=>({...item}));
+  crystalBlueprint=level.crystals.map(item=>({...item}));
+  enemyBlueprint=level.enemies.map(item=>({...item}));
+  lamps=[...level.lamps];
+  ruins=[...level.ruins];
+  portalTransition=false;
+}
+
+loadLevel(currentLevel);
+
 const player={x:120,y:0,vx:0,vy:0,w:60,h:52,gravity:1,onGround:false,face:1,lives:3,kills:0,collected:0,inv:0,shootCd:0,squash:0};
 
 function platformRect(p){
@@ -353,10 +445,11 @@ function spawn(x,y,n=12,color='#e8ddff',speed=240){
 }
 function updateHud(){
   heartsEl.textContent='♥'.repeat(player.lives)+'♡'.repeat(3-player.lives);
-  enemiesEl.textContent=`☠ ${player.kills}/7`;
-  crystalsEl.textContent=`◆ ${player.collected}/9`;
+  enemiesEl.textContent=`☠ ${player.kills}/${enemyBlueprint.length}`;
+  crystalsEl.textContent=`◆ ${player.collected}/${crystalBlueprint.length}`;
 }
 function reset(){
+  loadLevel(currentLevel);
   paused=false;pauseMenu.classList.remove('show');pauseBtn.classList.add('show');
   player.x=120;player.y=world.floor-player.h;player.vx=0;player.vy=0;player.gravity=1;player.onGround=false;player.lives=3;player.kills=0;player.collected=0;player.inv=0;player.shootCd=0;player.squash=0;
   crystals=crystalBlueprint.map(o=>({...o,taken:false,p:Math.random()*6}));
@@ -499,10 +592,39 @@ function update(dt){
     if(s.life<=0)enemyShots.splice(i,1);
   }
 
-  if(player.x>world.width-175){
-    won=true;audio.sfx('portal');spawn(player.x,player.y,80,'#dcb8ff',340);
-    const tr=i18n[language];msg.innerHTML=`<div class="panel"><div class="catBadge">🐈‍⬛</div><h1>${tr.victoryTitle}</h1><p class="lead">${tr.robots}: ${player.kills}/7 · ${tr.crystalWord}: ${player.collected}/9</p><p class="small">${tr.timeWord}: ${t.toFixed(1)} ${tr.seconds}</p><button id="againBtn">${tr.again}</button></div>`;
-    msg.classList.add('show');document.getElementById('againBtn').onclick=()=>{audio.sfx('ui');audio.playMusic('game',500);reset();last=performance.now()};
+  if(player.x>world.width-175&&!portalTransition){
+    portalTransition=true;
+    won=true;
+    audio.sfx('portal');
+    spawn(player.x,player.y,80,'#dcb8ff',340);
+
+    const tr=i18n[language];
+    const best=saveLevelResult();
+    const finalLevel=currentLevel===LEVELS.length-1;
+
+    msg.innerHTML=`<div class="panel"><div class="catBadge">🐈‍⬛</div><h1>${finalLevel?tr.finish:`${tr.level} ${currentLevel+1} ${tr.complete}`}</h1><p class="lead">${tr.robots}: ${player.kills}/${enemyBlueprint.length} · ${tr.crystalWord}: ${player.collected}/${crystalBlueprint.length}</p><p class="small">${tr.timeWord}: ${t.toFixed(1)} ${tr.seconds}<br>${tr.best}: ${Number(best.bestTime).toFixed(1)} ${tr.seconds}</p>${finalLevel?`<button id="againBtn">${tr.againAll}</button>`:`<p class="small">${tr.next}</p>`}</div>`;
+    msg.classList.add('show');
+
+    if(finalLevel){
+      const button=document.getElementById('againBtn');
+      button.onclick=()=>{
+        currentLevel=0;
+        savedProgress.currentLevel=0;
+        localStorage.setItem('flip-progress',JSON.stringify(savedProgress));
+        audio.sfx('ui');
+        audio.playMusic('game',500);
+        reset();
+        last=performance.now();
+      };
+    }else{
+      setTimeout(()=>{
+        currentLevel++;
+        savedProgress.currentLevel=currentLevel;
+        localStorage.setItem('flip-progress',JSON.stringify(savedProgress));
+        reset();
+        last=performance.now();
+      },1400);
+    }
   }
 
   player.squash=Math.max(0,player.squash-dt);
